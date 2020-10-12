@@ -1,16 +1,14 @@
 ---
 layout: post
-title:  "The sort of the parameters and return types at Spring Controller"
+title:  "Spring controller data types"
 date:   2019-11-04 08:47:54 +0900
 categories: spring
 ---
 
-### HttpServletRequest JS(Object) -> Spring(Primitive Type)
-> HttpServletRequest 
+### HttpServletRequest
 
 ```js
 
-    // HttpServletRequest JS(Object Type) -> Spring(Primitive Type)
     function httpServletRequestSample() {
         let data = {
             "name" : "kidongyun",
@@ -26,12 +24,11 @@ categories: spring
             }
         })
     }
+
 ```
 
 ```java
 
-    // REQ
-    // HttpServletRequest JS(Object Type) -> Spring (Primitive Type)
     @RequestMapping(value = "/httpServletRequestSample")
     public void httpServletRequestSample(HttpServletRequest request){
 
@@ -43,11 +40,10 @@ categories: spring
 
 ```
 
-### @RequestParam JS(Object Type) -> Spring(Primitive Type)
+### @RequestParam
 
 ```js
 
-    // @RequestParam JS(Object Type) -> Spring (Primitive Type)
     function requestParamSample() {
         let data = {
             "name" : "kidongyun",
@@ -68,8 +64,6 @@ categories: spring
 
 ```java
 
-    // REQ
-    // @RequestParam JS(Object Type) -> Spring(Primitive Type)
     @RequestMapping(value = "/requestParamSample")
     public void requestParamSample(@RequestParam String name, @RequestParam int age) {
         System.out.println("RequestParam(Object -> Primitive) : " + name + ", " + age);
@@ -77,11 +71,10 @@ categories: spring
 
 ```
 
-### @RequestParam JS(Object Type) -> Spring(Primitive Type)
+### @RequestBody Map
 
 ```js
 
-    // @RequestBody JS(Json Type) -> Spring(Map Type)
     function requestBodyMapTypeSample() {
         let data = {
             "name" : "kidongyun",
@@ -103,8 +96,6 @@ categories: spring
 
 ```java
 
-    // REQ
-    // @RequestBody JS(Json Type) -> Spring(Map Type)
     @RequestMapping(value = "/requestBodyMapTypeSample")
     public void requestBodyMapTypeSample(@RequestBody Map<String, Object> param) {
         System.out.println("RequestBody(Json -> Map) : " + param.get("name") + ", " + param.get("age"));
@@ -112,11 +103,10 @@ categories: spring
 
 ```
 
-### @RequestBody JS(Json Type) -> Spring(VO Type)
+### @RequestBody VO
 
 ```js
 
-    // @RequestBody JS(Json Type) -> Spring (VO Type)
     function requestBodyVOTypeSample() {
         let data = {
             "name" : "kidongyun",
@@ -138,8 +128,6 @@ categories: spring
 
 ```java
 
-    // REQ
-    // @RequestBody JS(Json Type) -> Spring(VO Type)
     @RequestMapping(value = "/requestBodyVOTypeSample")
     public void requestBodyVOTypeSample(@RequestBody Human human) {
         System.out.println("RequestBody(Json -> VO) : " + human.getName() + ", " + human.getAge());
@@ -147,7 +135,7 @@ categories: spring
 
 ```
 
-### ModelAndView JSP(View with Object Type) <- Spring(View with Object Type)
+### ModelAndView
 
 ```jsp
 
@@ -157,8 +145,8 @@ categories: spring
     <title>ModelAndViewSamplePage</title>
 </head>
 <body>
-${name}
-${age}
+    ${name}
+    ${age}
 </body>
 </html>
 
@@ -166,8 +154,6 @@ ${age}
 
 ```java
 
-    // RES
-    // ModelAndView JSP(View with Object Type) <- Spring(View with Object Type)
     @RequestMapping(value = "/modelAndViewSample")
     public ModelAndView modelAndViewSample() {
         ModelAndView view = new ModelAndView();
@@ -181,7 +167,7 @@ ${age}
 
 ```
 
-### ViewResolver JSP(View Type) <- Spring(String Type)
+### ViewResolver
 
 ```jsp
 
@@ -191,7 +177,7 @@ ${age}
     <title>ViewResolverSample</title>
 </head>
 <body>
-ViewResolverSample
+    ViewResolverSample
 </body>
 </html>
 
@@ -199,8 +185,6 @@ ViewResolverSample
 
 ```java
 
-    // RES
-    // ViewResolver JSP(View Type) <- Spring(String Type)
     @RequestMapping(value = "/viewResolverSample")
     public String viewResolverSample() {
         return "viewResolverSample";
@@ -208,7 +192,7 @@ ViewResolverSample
 
 ```
 
-### HttpServletResponse JSP(View Type) <- Servlet(Stream type)
+### HttpServletResponse
 ```java
 
     @RequestMapping(value = "/httpServletResponseSample")
@@ -227,11 +211,10 @@ ViewResolverSample
 
 ```
 
-### @ResponseBody JS(String Type) <- Servlet(String Type)
+### @ResponseBody
 
 ```js
 
-    // @ResponseBody JS(String Type) <- Spring(String Type)
     function responseBodyStringTypeSample() {
         $.ajax({
             url:'/responseBodyStringTypeSample',
@@ -246,8 +229,6 @@ ViewResolverSample
 
 ```java
 
-    // RES
-    // @ResponseBody JS(String Type) <- Servlet(String Type)
     @ResponseBody
     @RequestMapping(value = "/responseBodyStringTypeSample")
     public String responseBodyStringTypeSample() {
@@ -255,5 +236,3 @@ ViewResolverSample
     }
 
 ```
-
-### @ResponseBody JS(String Type) <- Servlet(Map Type)
