@@ -7,11 +7,11 @@ categories: aws
 
 ### Create Custom AMI
 
-> 이전에 만들었던 인스턴스 설정을 가지고 새로운 나만의 AMI를 생성할 수 있다.
+We can create custom ami using the instance setting information, which made before.
 
 ![](/image/2019-11-27-aws-create-ami/1.png)
 
-> 아래와 같이 수정하고 Create Image 버튼 클릭
+Let's modify as the below code and Press the 'Create image' button
 
 ```
 
@@ -28,7 +28,7 @@ categories: aws
 
 ![](/image/2019-11-27-aws-create-ami/3.png)
 
-> 위의 화면은 이미지가 생성되었음을 알려준다.
+This image offer the information that ami is created.
 
 ![](/image/2019-11-27-aws-create-ami/4.png)
 
@@ -36,4 +36,4 @@ categories: aws
     Name : web9
 ```
 
-> 왼쪽 사이드 메뉴에서 AMIs 로 들어간 다음 이번에 만든 AMI에 Name을 위와 같이 수정한다.
+Enter ami menu and modify the name of ami
