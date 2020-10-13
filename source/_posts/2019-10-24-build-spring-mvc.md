@@ -15,7 +15,7 @@ please click like below process.
     File > New > Project
 ```
 
-![](/image/2019-10-24-build-spring-mvc/1.png)
+![](/res/2019-10-24-build-spring-mvc/1.png)
 
 then You can see the new window for building the project like below.
 
@@ -31,7 +31,7 @@ then You can see the new window for building the project like below.
 
 If you finished, please press the next button located bottom of the window
 
-![](/image/2019-10-24-build-spring-mvc/2.png)
+![](/res/2019-10-24-build-spring-mvc/2.png)
 
 input the contents 
 
@@ -48,7 +48,7 @@ input the contents
 
 If you finished, please press the next button
 
-![](/image/2019-10-24-build-spring-mvc/3.png)
+![](/res/2019-10-24-build-spring-mvc/3.png)
 
 input the contents
 
@@ -62,11 +62,11 @@ input the contents
 
 please press the finish button then you can see the process of building the new project.
 
-![](/image/2019-10-24-build-spring-mvc/4.png)
+![](/res/2019-10-24-build-spring-mvc/4.png)
 
 Below is the file structure of your new project.
 
-![](/image/2019-10-24-build-spring-mvc/5.png)
+![](/res/2019-10-24-build-spring-mvc/5.png)
 
 ### 2. To modify _build.gradle_ file
 
@@ -100,13 +100,13 @@ dependencies {
 
 ```
 
-![](/image/2019-10-24-build-spring-mvc/6.png)
+![](/res/2019-10-24-build-spring-mvc/6.png)
 
 ### 3. To delete _root/src/main/webapp/index.jsp_ file
 
 > You have to delete _root/src/main/webapp/index.jsp_ file like below picture.
 
-![](/image/2019-10-24-build-spring-mvc/7.png)
+![](/res/2019-10-24-build-spring-mvc/7.png)
 
 ### 4. To make the new directories and files
 
@@ -244,15 +244,15 @@ index.jsp
 
 Let's open 'Edit configurations' window.
 
-![](/image/2019-10-24-build-spring-mvc/8.png)
+![](/res/2019-10-24-build-spring-mvc/8.png)
 
 To add new Tomcat Server
 
-![](/image/2019-10-24-build-spring-mvc/9.png)
+![](/res/2019-10-24-build-spring-mvc/9.png)
 
 To select the Tomcat server at _Application server_ part and To press the _fix_ button located bottom of window. and then finally, Let's add the artifact for making war file and building.
 
-![](/image/2019-10-24-build-spring-mvc/10.png)
+![](/res/2019-10-24-build-spring-mvc/10.png)
 
 ### 7. Annotation Enable
 
@@ -266,7 +266,7 @@ Let's get in those tabs.
 
 then you can see below window.
 
-![](/image/2019-10-24-build-spring-mvc/11.png)
+![](/res/2019-10-24-build-spring-mvc/11.png)
 
 Let's check the Enable annotation processing for annotation syntax.
 
@@ -274,4 +274,4 @@ Let's check the Enable annotation processing for annotation syntax.
 
 Let's run your new project, then you can see this browser content
 
-![](/image/2019-10-24-build-spring-mvc/12.png)
+![](/res/2019-10-24-build-spring-mvc/12.png)

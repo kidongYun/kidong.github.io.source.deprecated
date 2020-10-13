@@ -9,7 +9,7 @@ categories: aws
 
 We can create custom ami using the instance setting information, which made before.
 
-![](/image/2019-11-27-aws-create-ami/1.png)
+![](/res/2019-11-27-aws-create-ami/1.png)
 
 Let's modify as the below code and Press the 'Create image' button
 
@@ -23,14 +23,14 @@ Let's modify as the below code and Press the 'Create image' button
 
 ```
 
-![](/image/2019-11-27-aws-create-ami/2.png)
+![](/res/2019-11-27-aws-create-ami/2.png)
 
 
-![](/image/2019-11-27-aws-create-ami/3.png)
+![](/res/2019-11-27-aws-create-ami/3.png)
 
 This image offer the information that ami is created.
 
-![](/image/2019-11-27-aws-create-ami/4.png)
+![](/res/2019-11-27-aws-create-ami/4.png)
 
 ```
     Name : web9
