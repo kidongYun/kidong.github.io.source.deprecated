@@ -2,7 +2,7 @@
 layout: post
 title:  "How to post The Jekyll page via Markdown"
 date:   2019-04-25 03:23:00 +0900
-categories: jekyll
+categories: blog
 ---
 
 ### 1. Make a __.md__ file in .../_posts/

@@ -2,7 +2,7 @@
 layout: post
 title:  "Let's upload the your jekyll to github page"
 date:   2019-04-21 03:56:54 +0900
-categories: jekyll
+categories: blog
 ---
 
 First of all, your system should be installed __Git__ program before following this post. if you don't, you can get __Git__ at [this page](http://git-scm.com)

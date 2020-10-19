@@ -2,7 +2,7 @@
 layout: post
 title:  "Categorized Posts using Menu"
 date:   2019-05-05 11:38:54 +0900
-categories: jekyll
+categories: blog
 ---
 
 ### 1. Decide categories of which you want.

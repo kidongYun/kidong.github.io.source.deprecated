@@ -2,7 +2,7 @@
 layout: post
 title:  "Let's apply Jekyll Theme"
 date:   2019-04-24 04:21:00 +0900
-categories: jekyll
+categories: blog
 ---
 
 ### 1. Download the zip file of the desired __Jekyll Theme__.

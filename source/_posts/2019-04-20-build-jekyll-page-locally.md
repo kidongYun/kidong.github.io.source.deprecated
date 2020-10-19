@@ -2,7 +2,7 @@
 layout: post
 title:  "Let's build the jekyll page in local"
 date:   2019-04-20 02:24:54 +0900
-categories: jekyll
+categories: blog
 ---
 
 when I was building this jekyll page, I have been through a lot of trials and errors. so I felt at that time I should write some posts associated with __Jekyll__ to record my working and to share to the others.
