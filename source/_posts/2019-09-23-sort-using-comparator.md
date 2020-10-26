@@ -17,7 +17,7 @@ categories: algorithm
     input : String[] strings, int n
     output : String[] answer
 ```
-[문제 보기](https://programmers.co.kr/learn/courses/30/lessons/12915){: target="_blank"}
+[문제 보기](https://programmers.co.kr/learn/courses/30/lessons/12915)
 
 ## Solution
 Array.sort() 함수는 자료의 타입이 String일 때 기본적으로 사전순으로 나열한다. 그러나 이 문제처럼 특별한 기준으로 정렬하고 싶을 때에는 Comparator 클래스를 상속하거나 Comparable 인터페이스를 구현하여 문제를 해결한다. <br><br> 비교 대상이 primitive 자료형일 경우 Comparator 클래스를 상속하는게 보다 간단하며 새로운 객체를 구현해야 하는 경우는 Comparable 인터페이스를 구현한다. <br><br> Array.sort() 함수에 두번째 파라미터로 Comparator 객체를 전달하면 이 기준으로 정렬하도록 도와준다. 

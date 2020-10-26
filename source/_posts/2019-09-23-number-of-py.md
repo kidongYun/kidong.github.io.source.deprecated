@@ -17,7 +17,7 @@ categories: algorithm
     input : String s
     output : boolean answer
 ```
-[문제 보기](https://programmers.co.kr/learn/courses/30/lessons/12916){: target="_blank"}
+[문제 보기](https://programmers.co.kr/learn/courses/30/lessons/12916)
 
 ## Solution
 입력 파라미터 s를 toUpperCase(), toLowerCase()를 활용해 대문자 혹은 소문자로 통일하고 , s의 크기만큼 반복문을 돌려 p와 y의 개수를 센다. 결과적으로 두 수가 동일하면 true, 아니면 false를 반환한다.

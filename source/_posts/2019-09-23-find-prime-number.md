@@ -25,7 +25,7 @@ categories: algorithm
     input : int n
     output : int answer
 ```
-[문제 보기](https://programmers.co.kr/learn/courses/30/lessons/12921){: target="_blank"}
+[문제 보기](https://programmers.co.kr/learn/courses/30/lessons/12921)
 
 ## Solution
 숫자 n까지의 소수의 개수를 구하는 문제임으로 '에라토스테네스의 체' 알고리즘을 활용하여 해결한다. <br><br> 이는 n까지의 숫자 중에 각 소수들의 배수에 해당하는 수들을 제거하고 최종적으로 남는 수들을 소수로 판단하는 방법이다.

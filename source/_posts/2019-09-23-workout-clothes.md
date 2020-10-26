@@ -21,7 +21,7 @@ categories: algorithm
     input : int n, int[] lost, int[] reserve
     output : int[] answer
 ```
-[문제 보기](https://programmers.co.kr/learn/courses/30/lessons/42862){: target="_blank"}
+[문제 보기](https://programmers.co.kr/learn/courses/30/lessons/42862)
 
 ## Solution
 이 문제를 Greedy하게 풀 수 있음을 나타내는 부분은 바로 체격의 조건이다. 여벌의 체육복을 가지고 있는 학생이 지원할 수 있는 범위는 자신의 앞 번호와 뒷 번호 그 둘로 제한되어 있다. <br><br> 이제 문제를 가장 잘 해결하기 위한 자료구조를 선정해야 한다. 앞 번호와 뒷 번호를 명확히 보이게 하기 위해 각 학생들을 번호순으로 일렬로 나열시키고 체육복의 개수를 나타내게 하자. 즉 int[] 배열에 학생 번호 순서대로 각 학생들이 가지고 있는 체육복 개수를 넣는다. <br><br> 맨 앞번호 부터 끝번호까지 체육복이 없는 사람이 있다면 여유가 있는 앞 뒤 학생이 빌려주도록 반복한다.

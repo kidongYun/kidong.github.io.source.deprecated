@@ -29,7 +29,7 @@ n개의 음이 아닌 정수가 있습니다. 이 수를 적절히 더하거나 
     input : int[] numbers, int target
     output : int answer
 ```
-[문제 보기](https://programmers.co.kr/learn/courses/30/lessons/43165){: target="_blank"}
+[문제 보기](https://programmers.co.kr/learn/courses/30/lessons/43165)
 
 ## Solution
 각 자리 수는 +, - 값을 가질 수 있다.  경우의 수를 따지면 총 수가 n개 일때 가능한 조합의 수는 2의 n승 가지 이다. 즉 이 조합 방법은 부분집합을 구하는 형태와 같으며 이 문제는 powerSet 알고리즘을 활용하면 모든 경우의 수에 대해 접근할 수 있다. <br><br> powerSet 알고리즘은 재귀형태로 구현하는 것이 가장 간단하다. 이를 위해 powerSet() 함수를 구현하며 또 각 자릿 수의 +, -를 확인하기 위한 boolean[] 타입의 flags 변수를 선언한다.

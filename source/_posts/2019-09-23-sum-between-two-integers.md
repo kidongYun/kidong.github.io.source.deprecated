@@ -16,7 +16,7 @@ $$ sum = {(first + last) size \over 2} $$
     input : int a, int b
     output : long answer
 ```
-[문제 보기](https://programmers.co.kr/learn/courses/30/lessons/12912){: target="_blank"}
+[문제 보기](https://programmers.co.kr/learn/courses/30/lessons/12912)
 
 ## Solution
 반복문을 활용하여 a부터 b까지의 합을 구할수도 있지만 등차수열의 합 공식을 활용하면 훨씬 효율적인 방법으로 계산할 수 있다. <br><br> _'두 정수 사이의 합 = (첫항 + 끝항) * 항의 개수 / 2'_ 을 활용하면 바로 정답을 구할 수 있다.

@@ -19,7 +19,7 @@ n개의 노드가 있는 그래프가 있습니다. 각 노드는 1부터 n까�
     input : int n, int[][] edge
     output : int answer
 ```
-[문제 보기](https://programmers.co.kr/learn/courses/30/lessons/49189){: target="_blank"}
+[문제 보기](https://programmers.co.kr/learn/courses/30/lessons/49189)
 
 ## Solution
 Dijkstra 알고리즘을 활용하여 각 노드마다 최단거리를 구하고 가장 긴 거리의 개수를 구하면 된다. 최단경로 알고리즘을 많이 접해본 경우 쉽게 해결할 수 있는 문제이다. <br><br> Dijkstra 알고리즘을 구현하기 위해 각 노드마다 거리 정보를 가지고 있는 int[] distances와 방문 여부를 확인하기 위한 boolean[] visits 그리고 간선 정보를 알기 위한 그래프 데이터가 필요하다. <br><br> Dijkstra 알고리즘은 매 스텝마다 거리 정보를 최적화하고 가장 가까운 노드를 찾아 재귀호출하는 것이 핵심이다. 

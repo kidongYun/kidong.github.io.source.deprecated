@@ -32,7 +32,7 @@ categories: algorithm
     input : int[] priorities, int location
     output : int[] answer
 ```
-[문제 보기](https://programmers.co.kr/learn/courses/30/lessons/42587){: target="_blank"}
+[문제 보기](https://programmers.co.kr/learn/courses/30/lessons/42587)
 
 ## Solution
 priorities 배열을 바꿔가다 보면 location 변수가 지칭하는 값이 어떤 녀석인지 잃게 된다. 이를 위해 location 값을 priorities 배열이 변형을 일으킬 때마다 맞추어서 값을 바꿔주는 방법도 있지만. 여기서는 보다 심플하게 새로운 자료형을 만든다. <br><br> Document 라는 객체는 location값과 priority값을 가지고 있는 자료형이다. <br><br> 문제에서 제시된 방법대로 printer를 동작시키기 위해 Queue와 유사하게 동작하는 List를 하나 구현한다. 타입은 Document이다.
