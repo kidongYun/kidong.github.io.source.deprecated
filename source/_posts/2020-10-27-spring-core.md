@@ -168,3 +168,143 @@ initialization 이란 뭐냐
 @PostConstruct
 -> 빈주입 이후에 발생하는 콜백.
 
+빈 등록할때 component scan 에 클래스 정보를 너어줄때 두가지 방법이 있는데
+basePackages -> String 값을 받고 
+basePackagesClass -> 요거는 클래스를 받기떄문에 보다더 타입 세이프하다.
+
+스프링부트의 경우 Application.java 에 config 관련 어노테이션이 있는데 component-scan도 이 패키지 하위만 가능.
+
+따라서 저 파일이 없는 외부의 패키지의 경우는 자동으로 scane되지 않는다. 따로 추가해줘야한다.
+
+빈주입이 안될떼는 컴포넌트스캔을 잘 살펴보라.
+
+@Filter 어노테이션은. 빈생성을 할때 요구조건에 따라 추가 제거를 할 수 있따.
+
+component-scan에 중요한 것은 스캔의 범위와. 필터링되어있는 빈들이 어떤거인지를 확인하는것.
+
+스프링의 빈 등록은 스프링 프로젝트가 처음에 시작될때 모두가 빈을 등록하기때문에 구동시에는 좀 느려질수가 있따.
+
+이런거에 민감한 프로젝트는 빈 등록을 스프링 부트가 뜨는 시점에 registerBean() 함수를 활용해서 생성 시점을 변경할 수 있나보다.
+
+```java
+public static void main(String[] args) {
+    var app = new SpringApplication(Demospring51Application.class);
+
+    app.addInitializers((ApplicationContextInitializer<GenericApplicationContext>) ctx -> {
+        ctx.registerBean(MyService.class);
+    });
+
+    app.run(args);
+}
+```
+
+java10 이후부터는 var 라는 로컬 변수명을 가질 수 있다. -> 타입을 자동 추론하는 건가..?
+
+
+@ComponentScan은 BeanFactoryPostProcessor 라이프사이클에서 빈으로 등록한다.
+
+@ComponentScan이 빈등록 하는 대상은 @Component 어노테이션을 선언한 클래스이다.
+
+@Repository, @Service, @Controller, @Configuration 들도 @Component 어노테이션을 포함하고 있다.
+
+Function을 활용한 빈등록 (위에 언급한 방법)으로는 모든 빈들을 생성하기보다는 특별하게 @Bean 을 사용해서 등록하는 빈들만 쓰는게 나을듯.
+
+빈의 스코프
+
+싱글톤 -> 모든 프로젝트 전반에 걸쳐서 해당 인스턴스(빈)이 오직 한개인 형태.
+
+스프링의 기본 빈 생성방식은 싱글톤이다. 그래서 @Component 만을 붙였을 경우 이 클래스는 하나의 인스턴스만 생성된다.
+
+대부분의 경우 싱글톤 스코프를 사용하는데 그렇지 않은 경우 프로토타입 스코프를 사용한다.
+
+프로토타입 스코프 -> 매 빈이 주입될 떄 새로운 인스턴스로 가져오는 것.
+
+```java
+
+@Component @Scope("prototype")
+public class Proto {
+
+}
+
+```
+
+문제는 싱글톤 스코프의 빈이 프로토타입 스코프의 빈을 의존할고 있을 때가 이슈가 있다.
+
+왜냐면 싱글톤 스코프의 빈은 한번만 생성되기 때문에 매번 프로토타입의 스코프의 빈을 새로 생성해주지 않는다 즉 변경되지 않는다.
+
+이를 해결하기 방법.
+
+(1) proxyMode 를 사용한다.
+
+```
+
+@Component @Scope(value = "prototype", proxyType = ScopedProxyMode.TARGET_CLASS)
+public class Proto {
+
+}
+
+```
+
+Proxy로 감싸고. Proxy 빈을 사용하도록 한다. 싱글톤 스코프를 가진 빈이 프로토타입 스코프를 가진 빈을 의존하고 있을 때 직접 참조를 하게 되면 프로토타입 스코프의 빈이 변경이 될 수 없기 때문에 프록시라는 걸로 한번 감싸고 이 프록시의 빈이 변경되지 않도록 하고. 그 안에 있는 실제 프로토타입 빈은 변경될 수 있도록 한다.
+
+Proxy 선언을 하면 이 프록시 객체가 전혀 새로운 객체가 되는것은 아니고 감싸지는 클래스와 동일하다.
+
+롱런하는 빈이 짧은 생명 주기를 가진 빈을 의존할 때에는 이 Scope를 고려해야한다.
+
+
+프로파일.
+
+각 서버(테스트, 스테이징, 프로덕트 등)에 종속적으로 필요한 빈들을 추가하기 위한 기능?
+
+```java
+Environment environment = ctx.getEnvironment();
+
+/* 프로파일 검색 */
+System.out.println(Arrays.tostring(environment.getActiveProfiles()));
+
+/* 기본적으로 적용되는 프로파일. */
+System.out.println(Arrays.toString(environment.getDefaultProfiles()))
+
+```
+
+일반적으로 생성한 빈들은 모두 우리가 특정 프로파일을 언급하지 않았기 때문에 이 defaultProfiles 에 들어갔을 것이다.
+
+```java
+
+@Configuration
+@Profile("test")
+public class TestConfiguration {
+    @Bean
+    public BookRepository bookReposigory() {
+        return new TestBookRepository();
+    }
+}
+
+```
+
+test라는 프로파일로 스프링을 실행하지 않으면 위 빈 등록하는 코드가 실행되지 않는다. 이를 통해 서버 단위로 구분되어지는 빈 등록이 가능하다.
+
+프로파일 설정.
+(1)
+intellij setting -> active profiles
+
+(2)
+VM options
+-Dspring.profiles.active="test"
+
+2번 방법이 나은듯. 왜냐면 결국 서버에서 jar로 스프링 실행할 때 jvm option 줘야하기 때문.
+
+```java
+
+@Repository
+@Profile("test")
+public class TestBookRepository implements BookRepository {
+
+}
+
+```
+
+@Configuration 쪽 뿐만아니라 Component-Scan 되어지는 빈들에게도 @Profile 활용할 수 있다.
+
+@Profile을 적용하지 않은 경우는 -> @Profile("default") 로 생각하면 된다.
+
