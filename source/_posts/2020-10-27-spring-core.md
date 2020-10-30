@@ -2,7 +2,7 @@
 layout: post
 title:  "The core of Spring Framework"
 date:   2020-10-27 11:38:54 +0900
-categories: java
+categories: spring
 ---
 
 ### Inversion of Control (IOC)
@@ -307,4 +307,154 @@ public class TestBookRepository implements BookRepository {
 @Configuration 쪽 뿐만아니라 Component-Scan 되어지는 빈들에게도 @Profile 활용할 수 있다.
 
 @Profile을 적용하지 않은 경우는 -> @Profile("default") 로 생각하면 된다.
+
+
+environment property. jvm.option 같은 것들 가져오는 방법 말하는 거 같다.
+
+-Dvm.option 으로 줄수도있고
+혹은 .properties 파일 안에다가 넣어둔 값도 아래처럼 가져올 수 있다.
+
+
+```java
+Environment environment = ctx.getEnvironment();
+System.out.println(envrinment.getProperty("app.name"));
+```
+
+이렇게 바로 가져오는 방법도 있고.
+아 이걸로 계정 정보를 넣어두는것도 괜찮았을거 같은데..
+
+MessageSource
+국제화 기능을 제공하는 인터페이스.
+
+```properties
+greeting=안녕, {0}
+```
+
+```java
+
+@Autowired
+ApplicationContext applicationContext;
+
+@Autowired
+MessageSource messageSource;
+
+@Override
+public void run(ApplicationArguments args) throws Exception {
+    System.out.println(messageSource);
+
+    System.out.println(messageSource.getMessage("greeting"), Locale.KOREA);
+
+        System.out.println(messageSource.getMessage("greeting"), Locale.getDefault());
+}
+
+```
+
+message.properties
+messages_ko_KR.properties
+
+이와 같이 파일이름을 해서 만들어줘야함.
+
+그러면 mesaageSourcerk message로 시작하는 properties 파일들을 자동적으로 읽어서 가져온다.
+
+빈등록해서도 사용가능
+
+```java
+
+@Bean
+public MessageSource messageSource() {
+    var messageSource = new ReloadableResourceBundleMessageSource();
+    messageSource.setBasename("classpath:/messages");
+    messageSource.setDefaultEncoding("UTF-8");
+    return messageSource;
+}
+```
+
+릴로딩 기능이 있다.
+
+-> 빌드만 해주면 메시지 번들이 자동으로 빌드대서 변경된 내용이 적용된다.
+
+내가 쓰려는 타입으로 선언해서 쓰는것이 좋다. 상위 크래스를 선언하는 것보다. 왜냐하면 어떤 용도로 쓰려는것인지 보다더 가독성이 드러나기 떄문.
+
+
+```java
+ApplicationEventPublisher
+이벤트 기반의 코딩을 할떄 사용??
+
+public class MyEvent extends ApplicationEvent {
+    private int data;
+
+    public MyEvent(Object source){
+        super(source);
+    }
+
+    public MyEvent(Object source, int data) {
+        super(source);
+        this.data = data;
+    }
+
+    public int getData() {
+        return this.data;
+    }
+}
+```
+
+여기부분이 리스너다.
+
+```java
+
+@Component
+public class MyEventHandler implements ApplicationListener<MyEvent> {
+    @Override
+    public void onApplicationEvent(MyEvent event) {
+        System.out.println("이벤트 받았다. 데이터는 " + event.getData());
+    }
+}
+```
+
+```java
+
+@Autowired
+ApplicationEventPoblisher publishEvent;
+
+@Override
+public void run(ApplicationArguments args) throws Exception {
+    publishEvent.publishEvent(new MyEvent(this, 100));
+}
+
+```
+
+스프링 부트 설정하는 부분에서 이벤트를 등록하는 코드를 작성.
+
+이벤트는 ApplicationEvent 를 상속 받아서 미리 구현해두고.
+
+이 등록된 이벤트는 등록되어져 있는 빈들 중에 적절한 리스너를 찾아서 호출한다.
+
+리스너는 위에 구현해놔씀
+
+4.2 이전 버전 방법이고.
+
+이후에는 이렇게 사용하지 않음. 스프링은 자기의 프레임워크가 비지니스 코드들에 들어가지 않기를 원함 비침투성을 원함 그런데 4.2 버전 이전에는 ApplicationEvent 등을 상속받는다거나 하는것들이 모두 스프링프레임워크에 의존되는 코드들 넣어야 했음. 이후에는 이제 안그래도 된다고 함.
+
+어케 하느냐
+
+리스너에 해당하는 코드에 @EventListener 어노테이션 달기만 하면 됨.
+
+Event 클래스는 POJO 클래스가 되었고 이를 @EventListener 가 리스너로 받는다
+
+```java
+
+@Component
+public class MyEventHandler(MyEvent event) {
+    
+    @EventListener
+    @Order(Ordered.HIGHEST_PRECEDENCE + 2)
+    public void handle(MyEvent event) {
+        System.out.println(Thread.currentThread().toString);
+        system.out.println("이벤트 받았다. 데이터는 " + event.getData());
+    }
+}
+
+```
+
+비동기적으로 쓰고시으면 @Async 붙여라. + 그리고 스프링 부트 설정 파일 ...Application 이 클래스에 @EnableAsync 이걸 붙이면 각각의 쓰레드를 호출해서 비동기적으로(비순차적으로) 실행된다.
 
