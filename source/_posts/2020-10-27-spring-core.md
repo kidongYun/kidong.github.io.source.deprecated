@@ -458,3 +458,159 @@ public class MyEventHandler(MyEvent event) {
 
 비동기적으로 쓰고시으면 @Async 붙여라. + 그리고 스프링 부트 설정 파일 ...Application 이 클래스에 @EnableAsync 이걸 붙이면 각각의 쓰레드를 호출해서 비동기적으로(비순차적으로) 실행된다.
 
+ApplicationContext의 기능 ResourceLoader.
+
+말 그대로 resource를 로딩해주는 역할을 하는데 이를 applicationcontext가 상속받고 있다.
+
+```java
+
+@Component
+public class AppRunner implements ApplicationRunner {
+
+    @Autowired
+    ResourceLoader resourceLoader;
+
+    @Override
+    public void run(ApplicationArguments args) throws Exception {
+        resourceLoader.getResource("classpath:test.txt");
+        System.out.println(resource.exists());
+    }
+}
+
+```
+
+resource 폴더 안에있는 것들이 
+빌드되었을때 target > classes 폴더 안에 들어아깄을거임.
+
+classpath가 저길 바라보는 것인가.
+
+ ApplicationContext는 BeanFactory + Message... + Event + Resource ... 등등 많은 기능을 내포.
+
+ Resource 는 java.net.URL 이 객체를 추상화시켜 만든것.
+
+ 기존의 것이 클래스패스를 기준으로 가져오는 경우가 없었고..
+ HTTP, FTP emd prefix 에 대한 기능도 없었고.
+
+ 방법을 하나로 통일. getResource()
+
+ Resource 객체가 스프링 내부적으로도 많이 사용된다.
+
+ xml로 스프링 설정 했을 때에도 ClassPathXmlApplicationContext() 이 함수로 가져오는데.
+ 여기 안에 파라미터로 들어가는 문자열이 Resource 객체로 된다.
+
+ 이 Resource를 구현한 구현체들은 굉장히 만흥ㄴ데.
+
+ 이중 UrlResource, ClassPathResource, FileSystemResource, ServletContextResource 이렇게 있따.
+
+ classpath:
+ file:/// 등과 같이 접두어를 사용해서 해당 파일이 어디에서 오는지 명시를 해주는 것이 더 좋다.
+
+ getResource 할때 location의 접두어에 따라서 실제로 생성된 sub-class가 다르다.
+
+ classpath 접두어를 지우면 default로 ServletContextResource 를 사용한다.
+이거는 웹 애플리케이션 루트에서 상대 경로로 리소스를 찾는다.
+
+applicationContext를 어떤것을 쓰냐에 따라서 저 경로가 달라지기 떄문에 명시적으로 경로를 적어주는 것이 좋다.
+
+Validation
+
+Validator. 웹 MVC에서 많이 사용하지만 사실 이것만을 위해서 만들어진 인터페이스는 아니다.
+
+Bean Valdidation.
+-> Java EE 표준 스펙.
+-> NotEmpty, NotNull, NotBlank.... 등등
+
+Validator를 사용하기 위해서는 2가지 동작을 구현해야함.
+
+support()
+validate()
+이 두개.
+
+```java
+
+public class Event {
+    Integer id;
+    String title;
+}
+
+```
+
+```java
+
+public class EventValidator implements Validator {
+    @Override
+    public boolean supports(Class<?> clazz) {
+        return Event.class.equals(clazz);
+    }
+
+    @Override
+    public void validate(Object target, Errors errors) {
+        ValidationUtils.rejectIfEmptyOrWhitespace(errors, "title", "notempty", "default message")
+    }
+}
+
+```
+
+```java
+
+@Component
+public class AppRunner implements ApplicationRunner {
+    @Override
+    public void run(ApplicationArguments args) throws Exception {
+        Event event = new Event();
+        EventValidator = eventValidator = new EventValidator();
+        Errors errors = new BeanPropertyBindingResult(event, "")
+
+        eventValidator.validate(event, errors);
+
+        System.out.println(errors.hasErrors());
+
+        errors.getAllErrors().forEach(e -> {
+            System.out.println("===== error code =====");
+            Arrays.stream(e.getCodes()).forEach(System.out.::println);
+            System.out.println(getDefaultMessage());
+        });
+    }
+}
+
+```
+
+이렇게 Validator를 직접 인스턴스 생성해서 하는 방법은 정말 원시적인 방식.
+
+ValidationUtils 를 사용하지 않고 직접 조건을 걸수 있따.
+
+```java
+
+Event event = (Event) target;
+if(event.getTitle() == null) {
+    errors.reject()
+}
+
+```
+
+```java
+
+@Component
+public class AppRunner implements ApplicationRunner {
+
+    @Autowired
+    Validator validator
+
+    ....
+
+}
+
+```
+
+```java
+
+public class Event {
+    Integer id;
+
+    @NotEmpty
+    String title;
+
+    @NotNull @Min(0)
+    Integer limit;
+}
+```
