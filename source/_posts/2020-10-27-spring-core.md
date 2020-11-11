@@ -614,3 +614,568 @@ public class Event {
     Integer limit;
 }
 ```
+
+데이터 바인딩 -> 컨트롤러 등에서 데이터를 받아올때 이를 string type이 아니고 도메인으로 바로 받을수 있게끔 하는 기능
+
+```java
+
+public class Event {
+    private Integer id;
+    private String title;
+}
+
+@RestController
+public class EventController {
+
+    @InitBinder
+    public void init(WebDataBinder webDataBinder) {
+        webDataBinder.registerCustomEditor(Event.class, new EventEditor());
+    }
+
+    @GetMapping("/event.{event}")
+    public String getEvent(@PathVariable Event event) {
+        System.out.println(event);
+        return event.getId().toString();
+    }
+}
+
+@RunWith(Springrunner.class)
+@WebMvcTest
+public class EventControllerTest {
+    @Autowired
+    MockMvc movkMvc;
+
+    @Test
+    public void getTest() {
+        mockMvc.perform(get("/event/1"))
+        .andExpect(status().isOk())
+        .andExpect(content().string("1"));   
+    }
+}
+
+```
+
+{event} 에 해당하는 1의 값이 string 형태인데 이걸 Event 타입으로 변경하지 못하기 때문에 오류가 날거임.
+
+이럴때 사용하는게 PropertyEditor 를 사용해서 적용할 수 있음.
+
+```java
+
+public class EventEditor extends PropertyEditorSupport {
+    @Override
+    public String getAsText() {
+        Event event = (Event)getValue()
+
+        return event.getId().toString();
+    }
+
+    @Override
+    public void setAsText(String text) throws IllegalArgumentException {
+        setValue(new Event(Integer.parseInt(text)));
+    }
+}
+
+```
+getValue(), setValue() 가 서로다른 쓰레드에게 공유가 되기 때문에 Stateful하다. 상태정보를 저장하고 있다. Thread-safe 하지 않다.
+여러 쓰레드에서 공유해서 사용하면 안된다 -> 빈으로 등록하면 안된다. (일반적으로 싱글톤이기 때문)
+그냥 빈이 아닌 Thread Scope 으로 생성해서 사용하면 가능. 근데 그냥 빈으로 등록 안하는 것을 추천함.
+
+
+
+구현체를 직접 구현하는 경우에는 구현해야할 메서드들이 매우 많아지기 때문에 일반적으로 이러한 interface를 구현해둔 디폴트 클래스가 있다.
+이걸 상속받고 필요한 메서드들만 오버라이딩 해서 구현하는게 일반적이다.
+
+PropertyEditor는 구현하기도 너무 거추장하고
+ Thread-safe 하지 않고 
+ Object -> String 으로 변환이 가능하다는 단점 때문에 새로 추가된 것이 있는데 그게 Converter와 Formatter
+
+
+
+Converter
+S 타입을 T 타입으로 변환할 수 있는 매우 일반적인 변환기.
+상태 정보를 없앴음 == Stateless == Thread-safe
+
+
+```java
+
+public class EventConverter implements {
+    /* Convert from String to Event */
+    public static class StringToEventConverter implements Converter<String, Event> {
+        @Ovevrride
+        public Event convert(String source) {
+            return new Event(Integer.parseInt(source));
+        }
+    }
+
+    public static class EventToStringConverter implements Converter<Event, String> {
+        @Override
+        public String convert(Event source) {
+            return source.getId().toString();
+        }
+    }
+}
+
+```
+
+Bean 으로 등록해도 되며 보통 ConverterRegistry 에 등록한다.
+
+
+BOOT가 아닌경우
+```java
+
+@Configuration
+public class WebConfig implements WebMvcConfigurer {
+    @Override
+    public void addFormatters(FormatterRegistry registry) {
+        registry.addConverter(new EventConverter.StringToEventConverter());
+    }
+}
+
+```
+
+Formatter
+
+```java
+
+public class EventFormatter implements Formatter<Event> {
+    @Override
+    public Event parse(String, text, Locale locale) throws ParseException {
+        return new Event(Integer.parseInt(text));
+    }
+
+    @Override
+    public String print(Event object, Locale locale) {
+        object...;
+    }
+}
+
+@Configuration
+public class WebConfig implements WebMvcConfigurer {
+    @Override
+    public void addFormatters(FormatterRegistry registry) {
+        registry.addFormatter(new EventFormatter());
+    }
+}
+
+```
+
+타입은 모두다 ConversionService.
+WebConversionService extends DefaultFormattingConersionService;
+Web... 요거가 스프링 부트에서 제공해주는거.
+
+converter, formatter 사용을 위해서 스프링 부트에서는 webconfig를 새로 추가해서 등록할 필요가 없다.
+자동으로 Conversion service에 빈등록 시켜준다. 
+
+@WebMvcTest()
+-> 계층형 테스트, 웹과 관련된것만 Bean 등록, 보통 컨트롤러만 빈등록이 됨, 컨버터나, 포매터는 등록이 안될 가능성이 있다.
+
+```java
+@WebMvcTest({EventFormatter.class, EventController.class})
+```
+저렇게 {} 안에다가 추가적으로 객체를 넣어주면 특정 객체도 수동적으로 빈 등록이 가능하다.
+
+
+등록되어있는 컨버터들을 전부 보는 방법.
+```java
+System.out.println(conversionService);
+```
+
+SpEL (Sprng Expression Language)
+
+```java
+
+/* application.properties */
+my.value = 100
+
+/* bean sample */
+@Getter
+@Setter
+@Component
+public class Sample {
+    private int data = 200;
+}
+
+
+@Component
+public class AppRunner implements ApplicationRunner {
+    @Value("{#{1 + 1}}")
+    int value;
+
+    @Value("#{'hello' + 'world'}")
+    String greeting;
+
+    /* 표현식을 사용하는 방법 */
+    @Value("#{1 eq 1}")
+    boolean trueorFalse;
+
+    /* 프로퍼티 접근 */
+    @Value("${my.value}")
+    int myValue;
+
+    /* 표현식 안에서도 프로퍼티 접근이 가능함.*/
+    @Value("#{${my.value} eq 100}")
+    boolean isMyValue100;
+
+    /* 문자열이 그대로 들어간다. */
+    @Value("#{'spring'}")
+    String spring;
+
+    @Value("#{sample.data}")
+    int sampleData;
+
+    /* 특정 조건에 따라 선별적으로 빈등록을 해주는 어노테이션. */
+    @ConditionalOnExpression 
+
+    /* 이 annotation을 사용해서 쿼리 만들때 파라미터 전달할 때에도 SpEL 사용. */
+    @Query
+
+
+    @Override
+    public void run(ApplicationArguments args) throws Exception {
+
+    }
+}
+```
+
+가장 심플한 SpEL 사용법.
+
+SpEL 어떻게 동작하는가.
+
+```java
+
+ExpressionParser parser = new SpelExpressionParser();
+Expression expression = parser.parseExpression("2 + 100");
+Integer value = expression.getValue(Integer.class);
+System.out.println(value);
+
+```
+
+AOP 개념
+-> 흩어진 Aspect를 모듈화 할수 있는 프로그래밍 기법.
+
+concerns -> 비슷한 형태의 코드
+
+대표적인 예제가 transaction -> transaction 처리를 할때 set auto commit .... commit rollback.
+기존의 서비스 코드를 하나로 묶는 것.
+
+transaction 처리!!!! 요거 함 봐야될거 같은데. 중요한거같은데.
+
+이러한 유사한 코드들 concern 들을 Aspect 라는 곳에 모아둬서 처리한다.
+
+해야할일과 어디에 적용해야하는지를 묶어서 저장해둔다. 이게 AOP 처리 기법.
+
+용어가 좀 어려워서 처음에 포기하는데 실제로는 어렵지 않다.
+
+Aspect -> 묶은 모듈
+    이 모듈에 Advice, Pointcut 두가지가 들어가는데
+
+    Advice -> Aspect로 관리되는 코드
+    Pointcut -> 어디에 적용해야하는지
+
+Target -> 적용이 되는 대상
+
+JoinPoint -> 메서드 실행시점. 쓰레드가 분기되고 합쳐지는 것처럼. 합쳐지는 지점을 의미.
+
+CrossCut -> 흩어져있따.
+
+AOP 적용 방법
+    - 컴파일 타임 => 바이트코드를 만들때 수정된 버전으로 만든다.
+        -> It doesn't have any limit when it is running.
+    - 로드 타임 => jvm 로드타임 위빙. 낑겨서 넣는다
+        -> you should set the load time weaver. and it would occur a little of load.
+    - 런 타임 => 스프링 AOP가 사용하는 방법. -> A라는 클래스의 빈을 만들때 프록시 빈을 만든다.. 프록시 기반의 AOP.
+        -> 가장 유동적이나 부하가 클수 있음. 최초에 빈을 생성할때 약간의 성능 이슈가 있을수 있으나 로드 타임과 거의 유사하다고 봄.
+        -> 런 타임에서 적용하기 때문에 별도의 설정등이 적다.
+
+AspectJ (컴파일, 로드타임에서도 제공)
+-> 매우 많은 JoinPoint 등을 제공 
+
+Spring AOP (런타임으로 제공)
+-> 제한된 환경으로 제공.
+
+Spring AOP dependency는 Spring-core, Spring-context에 없다 그래서 새로 추가해야함.
+
+Spring AOP 특징
+-> 프록시 기반의 AOP
+-> 스프링 빈에만 AOP를 적용
+
+client -> subject(interface) -> proxy, read subject
+프록시 패턴  : 기존 코드 변경없이 접근 제어 또는 부가 기능 추가.
+
+```java
+
+public interface EventService {
+    public void createEvent();
+    public void publishEvent();
+    public void deleteEvent();
+}
+
+public class SimpleEventService implements EventService {
+    @Override
+    public void createEvent() {
+        long begin = System.currentTimeMillis();
+
+        try {
+            Thread.sleep(1000);
+        } catch (InterruptedException e) {
+            e.printStackTrace();
+        }
+
+        System.out.println("Created an event");
+
+        System.out.println(System.currentTimeMillis() - begin);
+    }
+
+    @Override
+    public void publishEvent() {
+        long begin = System.currentTimeMillis();
+
+        try {
+            Thread.sleep(2000);
+        } catch (InterruptedException e) {
+            e.printStackTrace();
+        }
+
+        System.out.println("Published an event");
+
+        System.out.println(System.currentTimeMillis() - begin);
+    }
+
+    @Override
+    public void deleteEvent() {
+        System.out.println("Deleted an event");
+    }
+}
+
+public class AppRunner implements ApplicationRunner {
+    @Autowired
+    EventService eventService;
+
+    @Override
+    public void run(ApplicationArguments args) throw Exception {
+        eventService.createEvent();
+        eventService.publishEvent();
+        eventService.deleteEvent();
+    }
+}
+
+```
+
+위의 코드는 성능 측정을 위해 기존 코드에 추가하고 있음.
+이런거를 하고싶지 않다! 이럴때 프록시 패턴을 사용!!
+
+성능을 측정하는 코드 같은것들은 사실 메인의 기능이 아님. 이런것들을 프록시에 넣어두면
+기존코드를 수정하지 않으면서 이러한 새로운 코드를 추가할 수 있다.
+
+한 인터페이스에 모두가 동일하게 사용하는 기능들이 있을경우.
+이런걸 프록시 패턴을 사용해서 처리하면 좋은가?? 이거 좋을거 같은데!!?!?!?
+
+이거 필요했는데
+
+```java
+
+
+public interface EventService {
+    public void createEvent();
+    public void publishEvent();
+    public void deleteEvent();
+}
+
+
+@Primary
+@Service
+public class ProxySimpleEventService implements EventService {
+    
+    @Autowired
+    SimpleEventService simpleEventService;
+    
+    @Override
+    public void createEvent() {
+        long begin = System.currentTimeMillis();
+        simpleEventService.createEvent();
+        System.out.println(System.currentTimeMillis() - begin);
+    }
+
+    @Override
+    public void publishEvent() {
+        long begin = System.currentTimeMillis();
+        simpleEventService.publishEvent();
+        System.out.println(System.currentTimeMillis() - begin);
+    }
+
+    @Override
+    public void deleteEvent() {
+        simpleEventService.deleteEvent();
+    }
+}
+
+public class SimpleEventService implements EventService {
+    @Override
+    public void createEvent() {
+        try {
+            Thread.sleep(1000);
+        } catch (InterruptedException e) {
+            e.printStackTrace();
+        }
+
+        System.out.println("Created an event");
+    }
+
+    @Override
+    public void publishEvent() {
+        try {
+            Thread.sleep(2000);
+        } catch (InterruptedException e) {
+            e.printStackTrace();
+        }
+
+        System.out.println("Published an event");
+    }
+
+    @Override
+    public void deleteEvent() {
+        System.out.println("Deleted an event");
+    }
+}
+
+public class AppRunner implements ApplicationRunner {
+    @Autowired
+    EventService eventService;
+
+    @Override
+    public void run(ApplicationArguments args) throw Exception {
+        eventService.createEvent();
+        eventService.publishEvent();
+        eventService.deleteEvent();
+    }
+}
+
+```
+
+ProxyService 이거를 만드는데 드는 비용이 꽤 크다.
+그리고 기능이 결국 비슷한걸 적용하기위해 Proxy를 만들었으니 이걸 AOP 로 사용??
+-> 프록시 객체를 동적(런타임 시점에)으로 만드는 방법이있다.
+-> 어떤 객체를 감싸는 프록시 객체를 만드는 거(프록시 객체 자체는 굉장히 심플)
+-> 
+
+AbstractAutoProxyCreator 를 활용해서 SimpleEventService 를 감싸는 프록시 객체를 만들어서 빈 등록해준다.
+AbstractAutoProxyCreator는 BeanPostProcessor 라이프사이클을 구현한 녀석.
+
+
+```
+dependency 추가
+spring-boot-starter-aop
+```
+
+```java
+
+@Component
+@Aspect
+public class PerfAspect {
+
+    /** 요거가 Advice 이다. */
+    /** Around 안에있는 것이 Pointcut. */
+    @Around("execution(* me.whiteship..*.EventService.*(..))")
+    public Object logPerf(ProceedingJoinPoint pjp) throw Throwable {
+        long begin = System.currentTimeMillis();
+        Object retVal = pjp.proceed();
+        System.out.println(System.currentTimeMillis() - begin);
+        return retVal;
+    }
+}
+
+```
+
+Advice : 해야할 일
+PointCut : 적용되는 지점
+
+AOP 정말 필요한 기능이였다. 프록시 패턴을 활용해서 AOP를 구현하는것 같다.
+-> AOP는 보통 annotation으로 활용해서 쓰는게 좋다.
+
+```java
+
+/** 이 어노테이션 정보를 어디까지 유지할 것인가. CLASS 라면 CLASS 까지 유지한다는 의미*/
+@Documented
+@Target(ElementType.METHOD)
+@Retention(RetentionPolicy.CLASS)
+public @interface PerLogging {
+
+}
+
+
+@Component
+@Aspect
+public class PerfAspect {
+
+    /** 요거가 Advice 이다. */
+    /** Around 안에있는 것이 Pointcut. */
+    @Around("@annotation(PerLogging)")
+    public Object logPerf(ProceedingJoinPoint pjp) throw Throwable {
+        long begin = System.currentTimeMillis();
+        Object retVal = pjp.proceed();
+        System.out.println(System.currentTimeMillis() - begin);
+        return retVal;
+    }
+}
+
+public class SimpleEventService implements EventService {
+    @PerLogging
+    @Override
+    public void createEvent() {
+        try {
+            Thread.sleep(1000);
+        } catch (InterruptedException e) {
+            e.printStackTrace();
+        }
+
+        System.out.println("Created an event");
+    }
+
+    @PerLogging
+    @Override
+    public void publishEvent() {
+        try {
+            Thread.sleep(2000);
+        } catch (InterruptedException e) {
+            e.printStackTrace();
+        }
+
+        System.out.println("Published an event");
+    }
+
+    @Override
+    public void deleteEvent() {
+        System.out.println("Deleted an event");
+    }
+}
+
+```
+
+위처럼 annotation 기반으로도 Pointcut을 설정할 수 있다.
+
+```java
+
+@Before("bean(simpleEventService)")
+public void hello() {
+    System.out.println("hello");
+}
+
+```
+이렇게 빈으로도 등록이 가능. @Before 는 해당 메서드가 실행되기 이전에만 실행되게금.
+
+```
+어드바이스 정의
+@Before
+@AfterReturning
+@AfterThrowing
+@Around
+```
+
+```
+포인트컷 정의
+@Pointcut
+@annotation
+bean
+execution
+....
+```
