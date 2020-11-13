@@ -1179,3 +1179,37 @@ bean
 execution
 ....
 ```
+
+
+
+
+Null-Safety
+
+@NonNull
+@Nullable
+@NonNullApi -> 패키지 레벨에서 모두 Null을 허용하지 않게끔 설정
+@NonNullFields
+
+런타임 시점에서 NullPointerException을 방지하기 위함.
+
+
+```java
+
+public class EventService {
+
+    @NonNull
+    public String createEvent(@NonNull String name) {
+        return "hello " + name;
+    }
+
+}
+
+```
+
+메소드 위에다가 저 어노테이셔을 사용하면 Return 값이 Null을 허용하지 않는다는 의미이고
+파라미터 옆에다가 두면 보이는 그대로 파라미터를 Null 허용하지 않는다는 의미이다.
+
+어노테이션이 효과가 없을 경우
+IDE에서 설정을 해야함
+
+Intellij -> Preferences -> Compiler
