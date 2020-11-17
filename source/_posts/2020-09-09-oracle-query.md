@@ -197,3 +197,33 @@ DBeaver 같은 툴에서 쓰려고 하면 에러가 뜨는 것이다
 ### ALTER TABLE 테이블 명 MODIFY(필드명 VARCHAR2(4000));
 
 ### CONCAT(SUBSTR(DCI_CLASS, 1, 1), LPAD(SUBSTR(DCI_CLASS, 2), 2, '0'))
+
+### SIGN(A - B)
+
+```
+-1 (A가 B보다 작은 경우) -> 
+0  (A와 B가 같은 경우) ->
+1  (A가 B보다 큰 경우) ->
+```
+
+```query
+
+SELECT
+    F.PF_LAST_NAME,
+    F.PF_FIRST_NAME,
+    DECODE(F.PF_PAX_TYPE, 'ADT', '성인', 'CHD', '소아', 'INF', '유아', '') PF_PAX_TYPE,
+    TO_CHAR(F.PF_FARE, 'FM9,999,999') PF_FARE,
+    TO_CHAR(F.PF_TAX, 'FM9,999,999') PF_TAX,
+    TO_CHAR(F.PF_TASF, 'FM9,999,999') PF_TASF,
+    TO_CHAR(F.PF_AMOUNT, 'FM9,999,999') PF_AMOUNT,
+    DECODE(TO_CHAR(R.PR_TKT_DLVRY_TIME, 'yyyymmdd'), TO_CHAR(SYSDATE, 'yyyymmdd'), '0', DECODE(SIGN(F.PF_FARE - 1000), -1, '0', 0, '1,000', 1, '1,000')) TASF_FEE
+FROM
+    PASSENGER_FARE_RECORD F, PASSENGER_RECORD R
+WHERE
+    F.PF_PR_ID = '500020783' AND
+    F.PF_PR_ID = R.PR_ID
+
+```
+
+### SYSDATE - 1
+어제를 의미한다
