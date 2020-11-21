@@ -5,75 +5,144 @@ date:   2020-10-27 11:38:54 +0900
 categories: spring
 ---
 
-### Inversion of Control (IOC)
+### Inversion of Control (IOC), Denpendency Injection (DI)
 
-IOC 기능을 제공하는 컨테이너 안에는 빈들을 저장한다. 이 빈들을 DI 하여 바로바로 사용할 수 있도록 한다.
+It means the technique what you give system the ability of controling the objects.
+That is you don’t consider for managing them. and Spring Framework can support this technique for user. The main advantage of this technique is removing the independent relationship beween each objects.
 
-초기에는 xml 기반으로 Spring 기본 설정을 하였으나 이후에는 annotation 기반으로 Spring 기본 설정을 함.
+```java
 
-스프링 IoC 컨테이너.
-    - BeanFactory.
-    - 애플리케이션 컴포넌트들의 중앙 저장소.
-    - 빈 설정 소스로 부터 빈 정의를 읽어들이고, 빈을 구성하고 제공한다.
+class A {
+	B b = new B();
+}
 
-빈
-    - 스프링 IoC 컨테이너가 관리하는 객체.
-    - 스프링 IoC 컨테이너가 관리하지 않는다면 이는 빈이 아니다. 단순히 자바 객체이다.
-    - @Repository -> auto-scan -> 빈 생성.
+class B { }
+```  
 
-스프링에서 의존성 주입(DI)를 받으려면 빈으로 관리되어야 한다.
-    -> 빈으로 관리하고 싶을때에는 해당 객체가 싱글톤 패턴을 준수해도 되는지를 먼저 고려하면 좋다. 기본적으로 빈들은 싱글톤 패턴으로 생성되기 때문. (<-> 프로토타입 패턴)
+The above source code show A object has a B object and It create new B instance.
+the code of these styles should consider the time when i inject the instance of B
+It means you should always consider the way how we inject the objects.
 
-    -> 이미 생성된 빈들을 가지고 활용하기 때문에 메모리 절약, 런타임시 비용 절감에 대한 장점을 가진다. (싱글톤의 장점)
+```java
 
-    -> 스프링 IoC 컨테이너에 등록된 빈은 스프링에서 제공하는 라이프사이클로 관리할 수 있다.
-    
-    라이프사이클 콜백 예시)
-    @PostConstruct
-    -> 빈이 생성된 이후에 위 annotataion이 붙은 함수가 호출된다.
+class A {
+	@Autowired
+	B b;
+}
 
-    우리가 직접 IoC를 만들수도 있지만 이미 Spring에서 제공하는 IoC의 기능이 충분히 범용적이고 효율적이기 때문에 이를 사용하는게 더 낫다.
+@Component
+class B { }
 
-    의존성 문제.
+```
 
-    BookService 객체가 현재 BookRepository 객체를 내부에서 사용하고 있다. 이말은 즉슨 BookService가 BookRepository 에 대한 의존성을 가지고 있다고 볼수 있다. 이렇게 의존성을 가진 BookService를 테스트하기 위해서는 BookRepository가 필요하기 때문에 단위테스트를 하기가 어려워진다.
+If you use Spring Framework then you can inject the objects like the above code.
+That means you don’t need to consider how i inject the object B and you just use this.
 
-    BookService 내부에서 이렇게 사용되어지는 BookRepository를 자체적으로 생성한다면. 해당 객체의 의존성 주입은 BookService에 항상 의존된다. 이런 문제를 해결하기 위해서 DI 작업은 외부에서 주입될수 있는 구조로 설계 해야한다.
+Spring container is the store of the objects. and we can import these objects like the above sample code. and We usually call ‘bean’ about these objects is located in the Spring container.
 
+Actually i already told about the concept of DI (Dependency Injection). It’s the way for getting the object instances for example constructor, java bean pattern, ioc....
 
-@Mock
--> 가짜 객체를 생성한다.
+### Spring Configuration
 
-의존성 주입을 외부로 빼둔다면 내부에서 사용되는 객체를 가짜로 생성하든, 실제로 생성하는 그때그때 필요한데로 구성해서 주입해줄수 있다.
-
-ApplicationContext
--> BeanFactory 중 하나
+The beginning of Spring Framework usually use the xml format for configuration of itself. but These xml files are too difficult to manage than the java code. so most of Spring Framework users want to configure the Spring as a java code with annotation. so It’s changed.
 
 
-빈주입하기.
+### Spring container
 
-빈주입을 하려면 스프링 IoC 컨테이너가 있어야겠쥬.
+I already told about it. It’s the store for saving the objects what would be injected by Spring Framework. and It’s the implementation of ‘BeanFactory’. Actually i don’t know about this interface. but you just remember the fact, which Spring Framework is the main store of application components.
 
-(1) applicationContext.xml
-빈 주입을 관리를 xml을 활용해서 하는 방법. 이건 진짜 old 스타일. 안좋은점이 빈 주입을 위한 작업이 굉장히 많다. xml에 넣어줘야하는 코드들이 상당하다. 그리고 관리 포인트가 자바가 아니기 때문에 별도로 존재하는 파일의 느낌이 듬.
+It would offer the beans from the Spring Configuration.
 
-autowired 는 기본적으로 타입과, 이름으로 빈을 추론.
+### Bean
 
-한 빈 안에 의존성을 가지고있다면 해당 의존성을 주입해주기 위해서 xml 에서 <bean/> 태그 안에 <property/> 태그를 추가해야함.<property/> 태그 속성 중 ref 가 있는데 여기에 주입하려고 하는 빈의 id 값을 넣어주면 됨.
+It is the alias of java object in the Spring Framework. The one of features of bean is this could inject from Spring Framework for example @Autowired annotation. And we don’t need to manage these beans. It’s managed by Spring Framework.
+Otherwise the object what don’t manage by Spring Framework is not a bean. 
+
+### component-scan
+
+The traditional way is we should assert all of the beans if you want to use. but It’s really not efficient. so ‘component-scan’ technique is appeared. It can register all the beans based package. 
+
+### Singleton, Prototype
+
+The bean usually is created only one instance by the Spring Framework. It’s singleton type. But you can create the bean as a different type for example prototype. The bean is created when your server start. so Your server would have some overhead at the beginning. but after this, the performance is better than what you don’t use singleton pattern.
+
+### Lifecycle
+
+Spring Framework provide the lifecycle for customizing of setting the beans.
+
+@PostConstruct
+It is used at the method what you want to make as a callback method.
+
+You can make the IoC System using Reflection technique. but the IoC of Spring Framework is really effective and universal. so if your case is not special then i just recommend to use the spring framework.
+
+```java
+
+@Component
+class BookService {
+	private BookRepository bookRepository = new BookRepository()
+}
+
+```
+
+We usually use the above code when we learn Java language firstly. But actually this pattern has a imperfection. The BookService object has the denpendency of BookRepository. and this object inject instance directly. It doesn’t have any way to inject different BookRepository object. This always take the BookRepository instance from ‘new BookRepository()’
+
+```java
+
+@Component
+class BookService {
+	private BookRepository bookRepository;
+
+	public BookService(BookRepository bookRepository) {
+		this.bookRepository = bookRepository;
+	}
+}
+
+```
+
+This way is more flexible than before one. because It can take a various bookRespository via the constructor.
+
+```java
+
+class Main {
+	public static void main(String[] args) {
+		/* It’s the new one */
+		BookService bookService = new BookService(new BookRepository());
+		
+		/* It’s the old one using before somewhere */
+		BookRepository bookRepository;
+		/* Do something to bookRepository */
+		BookService bookService = new BookService(bookRepository);
+	}
+}
+
+```
+
+The purpose of Dependency Injection is shifting the the subject of managing dependency from the main source to third party for example Spring Container. Every object can approach these container so you don’t need to consider how we inject the instances.
 
 
--> 빈을 일일히 작성해줘야 하는것이 정말로 번거롭다.
+### ApplicationContext
+The one of the subclass of BeanFactory. It has a lot of functions of Spring Framework. Bean Containers, Lifecycle...
 
-그래서 등장한 것이 component-scan, auto-scan.
+### applicationContext.xml
+This style could set the Spring Framework Initialization using xml file like ‘applicationContext.xml’. It’s really traditional style of Spring Framework. The main imperfection of this style is you should manage the xml files for keeping the Spring system. and It means the configuration source could not be as a object. in other word, you can’t do O.O.P for Spring configuration.
 
-xml 파일안에 <context: .../> 와 같은 태그를 사용해서 특정 패키지에 존재하는 빈들을 찾아서 빈으로 등록된다.
+### @autowired
+the autowired annotaion basically infer the type, the name of varable.
 
-빈등록과 의존성 주입은 다르다.
+If you use component-scan, auto-scan attribute of Spring Framework, You could register the bean automatically in the specific package.
 
-auto-scan을 해두고 빈으로 등록하고 싶은 클래스들에 @service, @component, @repository 등등의 어노테이션을 박아두면 자동으로 빈 등록이 된다.
+### Registering the Bean vs Dependency Injection
+Actually i often confused the annotation between for registering the beans and injecting dependencies.
 
-auto-scan으로 설정한 패키지와 어노테이션을 등록한 클래스의 위치가 맞아야만 등록된다
+```java
 
+/** It’s for registering the beans */
+@Component, @Service, @Controller, @Repository, @Entity, @Configuration ....
+
+/** It’s injecting the dependencies */
+@autowired @resource
+
+``` 
 -> 그다음은 xml 기반이아닌 java 기반으로 bean 등록하기.
 
 @Bean 어노테이션을 활용해서 빈 등록.
