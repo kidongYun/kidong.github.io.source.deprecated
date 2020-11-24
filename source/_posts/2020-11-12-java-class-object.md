@@ -528,3 +528,118 @@ public class Pet {
     }
 }
 ```
+
+추상클래스
+
+처리내용을 기술하지 않고 호출하는 방법만을 정의한 메서드를 추상 메서드라고 한다.
+추상 메서드를 한개라도 가진 클래스를 추상 클래스라 한다.
+
+추상메서드, 추상 클래슨느 abstract 라는 수식자를 사용하여 다음과 같이 정의.
+
+추상클래스를 상속하는 클래스는 추상메서드를 반드시 오버라이딩해서 구현해야한다.
+
+추상클래스를 사용하는 이유 : 고객이 말하지 않아도 추상클래슨느 무조건 구현해야 하기 때문에 까먹고 안 만들 일도 없다.
+이건 아닌거같은데
+
+```java
+
+abstract class Animal {
+    int age;
+    abstract void cry();
+}
+
+class Dog extends Animal {
+    void cry() {
+        System.out.println("멍멍");
+    }
+}
+
+class Cat extends Animal {
+    void cry() {
+        System.out.println("야옹");
+    }
+}
+
+public class AbstractClassEx {
+    public static void main(String[] args) {
+        Dog dog = new Dog();
+        dog.cry();
+
+        Cat cat = new Cat();
+        cat.cry();
+    }
+}
+
+```
+
+### 인터페이스
+
+인터페이스란 상속관계가 아닌 클래스에 기능을 제공하는 구조이다.
+클래스와 비슷한 구조이지만, 정의와 추상 메서드만이 멤버가 될 수 있단든 점이 다르다.
+클래스에서 인터페이스를 이용하도록 하게 하는 것을 '인터페이스의 구현'이라고 한다.
+인터페이스를 구현하기 위해서는 implements 를 사용한다.
+
+인터페이스는 다중상속이 가능하다.
+
+인터페이스는 복수의 인터페이스를 상속하여 새로운 인터페이스를 만들수 있다.
+
+```java
+
+interface Greet {
+    void greet();
+}
+
+interface Bye {
+    void bye();
+}
+
+class Morning implements Greet, Bye {
+    public void bye() {
+        System.out.println("안녕히 계세요.");
+    }
+
+    public void greet() {
+        System.out.println("안녕하세요.");
+    }
+}
+
+public class Meet {
+    public static void main(String[] args) {
+            Morning morning = new Morning();
+            morning.greet();
+            morning.bye();
+    }
+}
+
+```
+
+```java
+
+interface Greet {
+    void greet();
+}
+
+interface Bye extends Greet {
+    void bye();
+}
+
+class Morning implements Bye {
+    public void bye() {
+        System.out.println("안녕히 계세요.");
+    }
+
+    public void greet() {
+        System.out.println("안녕하세요.");
+    }
+}
+
+public class Meet {
+    public static void main(String[] args) {
+            Morning morning = new Morning();
+            morning.greet();
+            morning.bye();
+    }
+}
+
+```
+
