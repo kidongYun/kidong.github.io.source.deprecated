@@ -5,6 +5,12 @@ date:   2020-09-09 00:00:00 +0900
 categories: docker
 ---
 
+### docker run oracle example
+
+```
+    docker run -d -p 59160:22 -p 59161:1521 jaspeen/oracle-xe-11g
+```
+
 ## Dockerfile
 
 ### ENTRYPOINT
