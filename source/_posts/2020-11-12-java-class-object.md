@@ -1,4 +1,3 @@
-<<<<<<< HEAD
 ---
 layout: post
 title:  "Java O.O.P Class"
@@ -1175,4 +1174,207 @@ public class Pet {
     }
 }
 ```
->>>>>>> da9ca9b67812d1e44c96ada4ea1f878d2fd80ad6
+
+
+### 다형성
+
+상속한 클래스의 오브젝트는 슈퍼 클래스로도 서브 클래스로도 다울 수 있다.
+이렇게 하나의 오브젝트와 메서드가 많은 형태를 가지고 있는 것을 다형성이라고 한다.
+
+슈퍼클래스의 오브젝트 생성
+서브클래스의 오브젝트는 슈퍼 클래스의 오브젝트에 대입할 수 있다.
+
+상위클래스의 객체를 하위클래스의 객체로 대입할 수는 없다.
+
+Sub 클래스의 설계도를 바탕을 name 변수를 사용하면, 생성된 객체에는 해당 변수가 없어 에러가 발생하게 된다.
+이러한 이유로 상위클래스의 객체를 하위클래스의 객체로 대입하는 것을 막고 있다.
+
+
+```java
+
+abstract class Calc {
+    int a = 5;
+    int b = 6;
+
+    abstract void plus();
+}
+
+class Mycalc extends Calc {
+    void plus() { System.out.println(a + b); }
+    void minus() { System.out.println(a - b); }
+}
+
+public class Polymorphism1 {
+    public static void main(String[] args) {
+        Mycalc mycalc1 = new MyCalc();
+        myCalc1.plus();
+        myCalc1.minus();
+
+        Calc myCalc2 = new MyCalc();
+        myCalc2.plus();
+        myCalc2.minus();    // 에러
+
+
+    }
+}
+
+```
+
+```java
+
+interface Printable {
+    void print(String doc);
+}
+
+class PrnDrvSamsung implements Printable {
+    public void print(String doc) {
+        System.out.println(doc + "\nFrom Samsung : Black-White Ver");
+    }
+}
+
+class PrnDrvEpson implements printable {
+    public void print(String doc) {
+        System.out.println(doc + "\nFrom Epson : Black-White Ver");
+    }
+}
+
+public class Polymoriphism2 {
+    public static void main(String[] args) {
+        String doc = "프린터로 출력을 합니다";
+
+        Printable prn1 = new PrnDrvSamsung();
+        prn1.print(doc);
+
+        Printable prn2 = new PrnDrvEpson();
+        prn2.print(doc);
+    }
+}
+
+```
+
+
+다형성을 이용한 클래스간의 형변환
+
+서브 클래스의 오브젝트는 슈퍼 클래스의 오브젝트에 대입할 수 있다.
+
+힙영역에 실제 인스턴스가 저장되어있고 이를 스택영역의 참조변수가 가리키고 있다.
+슈퍼타입의 참조변수가 이 힙영역의 서브타입의 인스턴스를 가리키고 있을 때 슈퍼타입을 서브타입의 참조변수로 형변환하고 이 서브타입의 참조변수로
+같은 인스턴스를 가리키게 하면 단순히 인스턴스는 그대로이고 참조변수의 형만 변환되는거기 때문에 서브클래스만의 필드들을 접근할 수 있다.
+
+
+```java
+
+class PBoard { }
+
+class CBoard extends PBoard { }
+
+public class ClassCast {
+    public static void main(String[] args) {
+        PBoard sbd1 = new CBoard();
+        CBoard sbd2 = (CBoard) sbd1;
+
+        System.out.println("------------------------");
+
+        PBoard ebd11 = new PBoard();
+        CBoard ebd2 = (CBoard) ebd1;    // 이건 슈퍼클래스 인스턴스를 서브클래스의 참조변수로 가리키려고 하기때문에 오류.
+    }
+}
+```
+
+
+### 은닉화
+
+객체의 변수를 public으로 설정하면 외부에서 마음대로 이 변수를 사용할 수 있다.
+- 의도하지 않은 범위의 값을 넣을 수 있다.
+원하지 않는 데이터타입을 강제적으로 형변환하여 넣을 수도 있다.
+
+원하지 않는 데이터 넣는것을 방지하기 위해 Java Beans 패턴 (Getter/Setter) 를 사용.
+
+이게 은닉화였네 몰랐슈
+
+```java
+
+class SimpleBox {
+    private int num;
+
+    SimpleBox(int num) {
+        this.num = num;
+    }
+
+    public int getNum() {
+        return num;
+    }
+
+    public void setnum(int num) {
+        this.num = num;
+    }
+}
+
+public class ThisUseEx {
+    public static void main(String[] args) {
+        SimpleBox box = new SimpleBox(5);
+        box.setNum(10);
+        System.out.println(box.getNum());
+    }
+}
+```
+
+
+### 객체 확인
+
+instanceof는 오브젝트가 지정한 클래스의 오브젝트인지를 조사하기 위한 연산자이다.
+왼쪽 오브젝트가 오른쪽 클래스 또는 서브 클래스의 오브젝트라면 true
+
+instanceof 는 지정한 인터페이스를 오브젝트가 구현하고 있는지를 조사할 수도 있다.
+왼쪽 오브젝트가 오른쪽 인터페이스를 구현하고 있으면 true\
+
+```java
+
+interface Cry {
+    void cry();
+}
+
+class Cat implements Cry {
+    public void cry() {
+        System.out.println("야옹");
+    }
+}
+
+class Dog implements Cry {
+    public void cry() {
+        system.out.println("멍멍");
+    }
+}
+
+public class CheckCry {
+    public static void main(String[] args) {
+        Cry test1 = new Cat();
+        Cry test1 = new Dog();
+
+        if(test1 instanceof Cat) {
+            test1.cry();
+        } else {
+            System.out.println("고양이가 아닙니다.");
+        }
+    }
+}
+```
+
+### Class 클래스
+
+자바의 모든 클래스와 인터페이스는 컴파일 후 class 파일로 생성됨
+class 파일에는 객체의 정보(멤버변수, 메서드, 생성자 등)가 포함되어 있음
+Class 클래스는 컴파일된 class 파일에서 객체의 정보를 가져올 수 있음.
+reflection 프로그래밍 : Class 클래스르 ㄹ이용하여 클래스의 정보를 가져오고 이를 활용하여 인스턴스를 생성하고, 메서드를 호출하는 등의 프로그래밍 방식
+
+Class.forName() 메서드로 동적 로딩하기
+
+프로그래밍 할 때는 어떤 클래스를 사용할지 모를때 변수로 처리하고, 실행될 때 해당 변수에 대입된 값의 클래스가 실행될 수 있도록 Class 클래스에서 제공하는 static 메서드
+
+동적로딩이란 -> 컴파일 시에 데이터타입이 모두 바인딩되어 자료형이 로딩되는 것이 아니라 실행중에 데이터 타입을 알고 바인딩 되는 방식
+컴파일 타임에 체크 할 수 없음으로 해당 문자열에 댛나 클래스가 없는 경우 예외(ClassNotFoundException)이 발생할 수 있다.
+
+외부에서 소스코드 없이 클래스만 제공받아 사용할 경우에도 많이 사용된다.
+
+```java
+```
