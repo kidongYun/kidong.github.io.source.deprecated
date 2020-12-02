@@ -1377,4 +1377,71 @@ Class.forName() 메서드로 동적 로딩하기
 외부에서 소스코드 없이 클래스만 제공받아 사용할 경우에도 많이 사용된다.
 
 ```java
+
+public class MyBook {
+    private String title;
+    public String author;
+
+    public MyBook(String title) {
+        this.title = title;
+    }
+
+    public String getTitle() {
+        return title;
+    }
+
+    public void setTitle(String title) {
+        this.title = title;
+    }
+}
+
+public class ClassForNameTest {
+    public static void main(String[] args) throws ClassNotFoundException {
+        Class strClass = Class.forName("MyBook");
+
+        Constructor[] cons = strClass.getConstructors();
+        for(Constructor c : cons) {
+            System.out.println(c);
+        }
+
+        Field[] fields = strClass.getFields();
+        for(Field f : fields) {
+            System.out.println(f);
+        }
+
+        Method[] methods = strClass.getmethods();
+        for(Method m : methods) {
+            System.out.println(m);
+        }
+    }
+}
 ```
+
+
+### 절차지향 및 객체지향
+
+절차지향 프로그래밍 : C
+
+객체지향 프로그래밍 : Java, C++, C#, Python
+
+절차지향과 객체지향 개념은 반대되는 것이 아니다. 서로가 보완될수도 있는 것이다.
+
+자동차를 만들기 위해서는 차체, 바퀴,엔진, 핸들 ,의자, 엑셀 등등 많은 부품이들이 있어야 한다.
+
+절차지향 프로그래밍의 경우 집안 대대로 차체 -> 바퀴 -> 엔진 -> 핸들 순으로 작업 했다. 이 순서가 아니면 우리 집안의 제품이 아니다.
+
+객체지향의 프로그래밍의 경우는 공장에서 각 공장에서 각 요소들의 제품들을 제작한다.
+제작 순서 자체는 중요하지 않다. 물론 비동기 적으로 동작할수도 있고 아닐 수도 있다.
+
+절차지향의 프로그래밍은 순차적인 처리가 중요시 되며 프로그램 전체가 유기적으로 연결되도록 만드는 프로그래밍 기법
+-> 트랜잭션 처리 등은 이걸로 해야할것 같은데
+
+이들은 서로 분리되면 안되고 함수 호출 순서가 틀려서도 안되면 하나가 고장나면 전체 기능이 마비된다.
+절차지향은 데이터를 중심으로 함수를 구성한다 함수의 호출 순서가 바뀌면 데이터의 전달과 값이 변할 수 있따.
+
+객체지향 프로그래밍은 개발하려는 것을 기능별ㄹ ㅗ묶어 모듈화를 하고 모듈을 재활용하는 프로그래밍 방식.
+
+제작에 있어서 순서적이지 않아도 된다.
+이들은 각각 따로 독립적으로 개발되어 나중에 한곳에 모여 자신의 기능만 제대로 발휘하면 된다.
+부품들이 결합되어 움직이다 어느 하나가 고장이 나면 고장난 부품만 고쳐주면 되고 다른 부품들은 영향을 받지 않는다.
+필요한 부품을 다른 것으로 교체할 수 있다.
