@@ -207,3 +207,49 @@ pom.xml 안에 <parent> 태그에 우리는 아래처럼 'spring-boot-starter-pa
 단점 -> parent 쪽에서 들어오는거가 dependency 만 들어오는게 아니고 다른 속성들 (인코딩, 자바 버전, 플러그인 설정, yml 파일 사용) 도 설정을 해주는 거기 때문에 이런것들을 모두 관리해야 한다.
 parent에서 의존성 말고 관리해주느 것들을 <parent/> 이 태그로 못가져 오기 때문에. 이 부분들을 모두 나의 프로젝트에서 관리해주어야 한다.
 
+
+### 스프링 부트 의존성 관리 응용
+
+mvnrepository -> maven 의존성의 허브사이트.
+
+1. 의존성을 추가하는 방법
+
+```xml
+        <dependency>
+            <groupId>org.springframework.boot</groupId>
+            <artifactId>spring-boot-starter-data-jpa</artifactId>
+        </dependency>
+```
+
+modelMapper -> domain을 가지고 flatDesign을 만들어준다
+
+```xml
+        <dependency>
+            <groupId>org.modelmapper</groupId>
+            <artifactId>modelmapper</artifactId>
+            <version>2.3.0</version>
+        </dependency>
+```
+
+version은 항상 명시해줘야한다. Spring Boot가 지원해주는 애들은 version이 자동 관리가 되긴 함 이거는 intellij 소스창 옆에 보면 동그랗게 뜸
+
+
+```xml
+    <properties>
+        <spring.version>5.0.6.RELEASE</spring.version>
+    </properties>
+```
+
+스프링 버전을 바꾸고싶다면 properties 태그에 위와같이 추가한다. 이는 Spring-boot parent 에 dependencies parent 에 가보면 동일한 형태로 정의가 되고 있음을 볼수 있다.
+자바 버전을 바꾸고싶다면 properties 태그에 똑같이 아래와 같이 수정하면된다.
+
+```xml
+    <properties>
+        <java.version>1.8</java.version>
+    </properties>
+```
+
+### 자동 설정 이해 (EnableAutoConfiguration)
+
+@SpringBootApplication 는 중요한 3개의 어노테이션을 합친것
+
