@@ -1,90 +1,56 @@
 ---
 layout: post
-title:  "Java O.O.P Class"
+title:  "Java 기반의 객체지향 프로그래밍에 대한 고찰"
 date:   2020-11-12 11:38:54 +0900
 categories: java
 ---
 
-### 클래스의 개념 (1)
+### 클래스와 인스턴스의 개념
 
-클래스란 간단히 말하면 객체와 관련된 데이터와 처리동작을 한데 모은 것이다.
-
-Class is the blueprint of the object. This blueprint should be consist of data and method. so You can't use the class directly.
-
-You should create the object using 'new' keyword
-
-```java
-    /* 클래스 정의*/
-    class Npc {
-        /* 필드 - 데이터 */
-        String name;
-        int hp;
-
-        /* 메서드 - 동작 */
-        void say() {
-            System.out.println("안녕하세요");
-        }
-    }
-
-    public class MyNpc {
-        public static void main(String[] args) {
-            Npc saram1 = new Npc();
-
-            saram1.name = "경비";
-            saram1.hp = "100";
-
-            System.out.println(saram1.name + ":" + saram1.hp);
-
-            saram1.say();
-        }
-    }
-```
-
-### 클래스의 개념 (2)
-
-메서드만 있는 클래스
-```java
-
-class Calc {
-    int add(int a, int b) {
-        return a + b;
-    }
-}
-
-public class Calculation {
-    public static void main(String[] args) {
-        // 객체 생성
-        Calc calc = new Calc();
-        // 메서드 호출
-        int nReturn = calc.add(3, 9);
-
-        System.out.println("3 + 9 = " + nReturn);
-    }
-}
+객체지향 프로그래밍 관점에서 이 세상에 존재하는 모든 것들은 속성와 동작으로 이루어져 있다고 한다. 속성은 특정 사물이 지니고 있는 고유의 정보를 의미하고 동작이란 특정 사물들이 주체로써 행하는 모든 것들을 의미한다. 한 예시로 사람이라는 객체가 있다고 하면 이 사람의 이름, 키, 나이와 같은 정보들은 이 객체의 속성이 될 수 있으며, 이 사람이 밥을 먹고, 걷고, 말을 하는 행위들은 동작으로 볼 수 있다.
 
 ```
+객체 = 속성 + 동작
+```
 
-필드만 있는 클래스
+객체지향 프로그래밍 언어에서는 이 객체라는 것을 그려내기 위해 클래스, 인스턴스라는 두 가지 개념이 존재한다. 클래스는 객체의 필수 구성 요소인 속성과 동작을 활용해 프로그래밍 세계에서 객체를 만들기 위한 도구이며, 'class' 키워드를 활용해 나타낼 수 있다. 클래스에서 사용하는 용어가 실제 객체와는 약간 다른데 주로 속성은 필드라는 이름으로 불리고 동작은 메서드라는 이름으로 부른다. 개념 자체는 동일하다.
+
+```
+클래스 = 필드 + 메서드
+```
+
+이 클래스를 통해서 만들어진 실제 객체를 프로그래밍 세계에서는 인스턴스라고 부른다. 인스턴스는 'new' 키워드를 통해서 생성되어진다. 'new' 키워드를 활용해서 동일한 클래스를 여러번 호출하면 동일한 객체가 여러 개 생성될 수 있다.
+
 ```java
 
-class Book {
-    String title;
-    String author;
-    int price;
+/* 'class' 키워드를 통해서 객체를 표현할 수 있다. */
+class Person {
+    /* 필드 */
+    String name;
+    float height;
+    int age;
+
+    /* 메서드 */
+    void eat();
+    void walk();
+    String talk() {
+        return "제 이름은 " + name + " 이고, 키는 " + height + " 이고, 나이는 " + age + " 입니다. ";
+    };
 }
 
-public class MyBook {
+class Main {
     public static void main(String[] args) {
-        // 객체 생성
-        Book book = new Book();
-        // 필드 접근
-        book.title = "클래스의 기초";
-        book.author = "홍길동";
-        book.price = 10000;
+        /* 'new' 키워드를 통해서 인스턴스를 생성한다. */
+        Person person = new Person();
 
-        System.out.println(book.title + ":" + book.author + ":" + book.price);
+        person.name = "john";
+        person.height = 180.2;
+        person.age = 31;
+
+        System.out.println(person.talk());
     }
 }
+
 ```
 
 ### 패키지의 개념
