@@ -1,11 +1,11 @@
 ---
 layout: post
-title:  "Exception test code using JUnit."
+title:  "Junit 예외 테스트하는 방법에 대한 고찰"
 date:   2020-10-26 11:38:54 +0900
 categories: java
 ---
 
-You can test the exception simply like the below.
+테스트를 하게 되면 특정 예외를 발생시키는 코드에 대해서도 테스트를 해야할 경우가 있다. 예를 들면 파라미터 검증을 할 때 특정 값이 없다면 예외가 던져지는 지 확인해볼 수 있고, 
 
 ```java
 
