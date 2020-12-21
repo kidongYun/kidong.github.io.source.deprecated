@@ -253,3 +253,51 @@ version은 항상 명시해줘야한다. Spring Boot가 지원해주는 애들�
 
 @SpringBootApplication 는 중요한 3개의 어노테이션을 합친것
 
+@SpringBootConfiguration
+@ComponentScan
+@EnableAutoConfiguration
+
+
+스프링 부트는 2단계로 의존성을 가져온다?
+ComponentScan + EnableAutoConfiguration
+
+@EnableAutoConfiguration 이 없어도 어플리케이션을 실행할 수는 있다. 그러나 이것은 웹서버는 없다. 웹어플리케이션에 대한 초기 자동 설정을 버리고 그냥 스프링 프레임워크만 띄웠다는 의미인듯.
+
+```java
+
+import org.springframework.boot.SpringApplication;
+import org.springframework.boot.WebApplicationType;
+import org.springframework.context.annotation.ComponentScan;
+import org.springframework.context.annotation.Configuration;
+
+@Configuration
+@ComponentScan
+public class Application {
+    public static void main(String[] args) {
+        SpringApplication application = new SpringApplication(Application.class);
+        application.setWebApplicationType(WebApplicationType.NONE);
+        application.run(args);
+    }
+}
+
+```
+
+@ComponentScan 으로 빈을 먼저 등록한 다음에
+@EnableAutoConfiguration 이걸로 추가적인 빈 등록을 한다 2단계로 나누어진다.
+
+@ComponentScan -> 스프링의 기본적인 내용
+    @Component, @Configuration @Repository, @Service @Controller @RestController 등등의 어노테이션이 되어있는 인스턴스를 리플렉션으로 생성해서 스프링 컨테이너에 빈으로서
+    넣어두는거 같음. 기본적인 내용.
+    자기 어노테이션 기준으로 하위 패키지에 저 어노테이션들이 박혀있는 클래스들을 인스턴스화 후 빈 등록.
+
+@EnableAutoConfiguration -> Spring meta 파일을 보고 가져온다.
+org.springframework.boot:spring-boot-autoconfigure 프로젝트 안에
+META-INF 폴더가 있고 이안에 spring.factories 라는 파일이 있다.
+거기 안에 org.springframework.boot.autoconfigure.EnableAutoConfiguration=\ 라는 경로로 키가 설정 되어있오 그밑으로 Configuration value 값들이 들어있는데 이걸 다 가져오는거 같아.
+여하튼 이 파일을 보고 여기에 설정되어있는 값들을 모두 빈등록.
+
+WebMvcAutoConfiguration 이 클래스도 EnableAutoConfiguration 으로 빈 등록되는 객체인데
+그 안에보면 @Conditional.... 조건에 따라서 등록되고 안되는것도 볼수있다.
+
+모두 빈 등록을 하지만 조건에 따라 안되는것도 있음을 참고해야함.
+
