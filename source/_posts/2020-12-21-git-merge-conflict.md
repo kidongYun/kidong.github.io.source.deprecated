@@ -1,7 +1,7 @@
 ---
 layout: post
 title:  "GIT 머지 충돌에 대한 고찰"
-date:   2020-12-14 11:38:54 +0900
+date:   2020-12- 11:38:54 +0900
 categories: git
 ---
 
