@@ -87,11 +87,9 @@ pom.xml 설정
          xsi:schemaLocation="http://maven.apache.org/POM/4.0.0 http://maven.apache.org/xsd/maven-4.0.0.xsd">
     <modelVersion>4.0.0</modelVersion>
 
-    <groupId>com.interpark</groupId>
-    <artifactId>tour-air-api-product</artifactId>
-    <version>0.0.1-SNAPSHOT</version>
-    <name>tour-air-api-product</name>
-    <description>Air Api Product</description>
+    <groupId>org.example</groupId>
+    <artifactId>SpringBootAutoConfigure</artifactId>
+    <version>1.0-SNAPSHOT</version>
 
     <parent>
         <groupId>org.springframework.boot</groupId>
@@ -105,8 +103,12 @@ pom.xml 설정
             <groupId>org.springframework.boot</groupId>
             <artifactId>spring-boot-starter-web</artifactId>
         </dependency>
+        <dependency>
+            <groupId>org.springframework.boot</groupId>
+            <artifactId>spring-boot-starter-test</artifactId>
+        </dependency>
     </dependencies>
-
+    
     <build>
         <plugins>
             <plugin>
@@ -300,4 +302,170 @@ WebMvcAutoConfiguration 이 클래스도 EnableAutoConfiguration 으로 빈 등�
 그 안에보면 @Conditional.... 조건에 따라서 등록되고 안되는것도 볼수있다.
 
 모두 빈 등록을 하지만 조건에 따라 안되는것도 있음을 참고해야함.
+
+
+### 자동 설정 만들기 1부: Starter와 AutoConfigure
+
+Xxx-Spring-Boot-Autoconfigure => 자동설정 등을 설정할때 이런식으로 이름을 만들고 프로젝트를 만든다.
+Xxx-Spring-Boot-Starter => 필요한 의존성등을 정의할때 보통 이런식으로 이름을 만든다.
+그냥 하나로 하고싶을 때에는 Starter 이름을 사용하자.
+
+```java
+
+/* Holoman.java */
+
+package me.whiteship;
+
+public class Holoman {
+    String name;
+    int howLong;
+
+    public String getName() {
+        return name;
+    }
+
+    public void setName(String name) {
+        this.name = name;
+    }
+
+    public int getHowLong() {
+        return howLong;
+    }
+
+    public void setHowLong(int howLong) {
+        this.howLong = howLong;
+    }
+
+    @Override
+    public String toString() {
+        return "Holoman{" +
+                "name='" + name + '\'' +
+                ", howLong=" + howLong +
+                '}';
+    }
+}
+
+```
+
+```java
+
+/* HolimanConfiguration.java */
+package me.whiteship;
+
+import org.springframework.context.annotation.Bean;
+import org.springframework.context.annotation.Configuration;
+
+@Configuration
+public class HolomanConfiguration {
+
+    @Bean
+    public Holoman holoman() {
+        Holoman holoman = new Holoman();
+        holoman.setHowLong(5);
+        holoman.setName("Keesun");
+        return holoman;
+    }
+}
+
+```
+
+src/main/resource/META-INF에 spring.factories 파일 생성
+
+이 파일은 스프링부트가 아니고 스프링에서 원래 제공해주는 형식의 파일이다 여기서 라이프사이클도 조절이 가능하다.
+
+```factories
+
+org.springframework.boot.autoconfigure.EnableAutoConfiguration=\
+  me.whiteship.HolomanConfiguration
+
+```
+
+그 다음에 다른 프로젝트에서 이 프로젝트를 사용할 수 있도록 mvn install 해서 빌드해서 jar 파일로 만들고 이걸 로컬 메이븐 저장소에다가 등록 다른 lib에 등록해준다.
+
+사용하려고하는 프로젝트를 열고 의존성 추가 의존성 groupId 와 artifactId, version 등은 Holoman 프로젝트 pom.xml 에서 확인할 수 있다.
+
+```xml
+
+    <dependencies>
+        <dependency>
+            <groupId>me.whiteship</groupId>
+            <artifactId>kidong-spring-boot-starter</artifactId>
+            <version>1.0-SNAPSHOT</version>
+        </dependency>
+    </dependencies>
+    
+```
+
+ApplicationRunner 는 스프링 프레임워크가 시작되었을 때 자동으로 실행되는 빈을 만들고 싶을때 사용하면 된다. 인터페이스 객체임으로 implements 받아서 사용가능
+
+```java
+
+package com.example;
+
+import me.whiteship.Holoman;
+import org.springframework.beans.factory.annotation.Autowired;
+import org.springframework.boot.ApplicationArguments;
+import org.springframework.boot.ApplicationRunner;
+import org.springframework.stereotype.Component;
+
+@Component
+public class HolomanRunner implements ApplicationRunner {
+
+    /* 이 프로젝트에서는 어디에서도 Holoman 객체를 빈으로 등록하지 않았다 */
+    @Autowired
+    Holoman holoman;
+
+    @Override
+    public void run(ApplicationArguments args) throws Exception {
+        System.out.println(holoman);
+    }
+}
+
+```
+
+이 방법의 문제는 내가 직업 위처럼 자동설정한 빈을 아래처럼 직접 다시 생성하면 생성한 빈이 무시가 된다. 
+
+```java
+
+package com.example;
+
+import me.whiteship.Holoman;
+import org.springframework.boot.SpringApplication;
+import org.springframework.boot.WebApplicationType;
+import org.springframework.boot.autoconfigure.SpringBootApplication;
+import org.springframework.context.annotation.Bean;
+
+@SpringBootApplication
+public class Application {
+    public static void main(String[] args) {
+        SpringApplication application = new SpringApplication(Application.class);
+        application.setWebApplicationType(WebApplicationType.NONE);
+        application.run(args);
+    }
+
+    @Bean
+    public Holoman holoman() {
+        Holoman holoman = new Holoman();
+        holoman.setName("whiteship");
+        holoman.setHowLong(60);
+        return holoman;
+    }
+}
+
+```
+
+왜냐하면 빈 등록을 하는 단계가 2개라고 이전에 언급했는데
+@ComponentScan 방법이 먼저이고 @EnableAutoConfiguration 인데 직접 생성한 빈 설정은 @ComponentScan 방법에서 만들어졌다가 2단계에서 묻히는것.
+@EnableAutoConfiguration 요거에 특정 케이스에는 빈 등록을 안하게끔 하는 설정들이 있엇다 그걸 활용하면 이 문제를 개선 가능하다.
+내 설정보다 자동설정이 더 우선된다.
+
+최근 버전으로 살펴보니 아예 오류가 떨어진다.
+
+```
+The bean 'holoman', defined in class path resource [me/whiteship/HolomanConfiguration.class], could not be registered. A bean with that name has already been defined in com.example.Application and overriding is disabled.
+```
+
+
+### 자동 설정 만들기 2부: @ConfigurationProperties
+
 
