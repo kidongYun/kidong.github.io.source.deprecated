@@ -22,37 +22,47 @@ public int add(int value1, int value2) {
 
 ```
 
-이 글에서 구현하려고하는 로깅의 기능은 한 함수의 범위에서 들어오는 입력 파라미터의 값들과, 리턴되는 결과 값을 보여주는 기능이다. 위에서 제시한 로깅 방법은 이를 가장 간단하게 구현한 방법이다. 이번에는 덧셈의 기능을 하는 add() 뿐만 아니라 뺄셈과 곱셈의 기능을 하는 sub(), mul() 도 구현하고, 로깅 기능도 넣어보도록 하자.
+이 글에서 구현하려고하는 로깅의 기능은 한 함수의 범위에서 들어오는 입력 파라미터의 값들과, 리턴되는 결과 값을 보여주고 해당 함수의 실행시간을 보여주는 기능이다. 위에서 제시한 로깅 방법은 이를 가장 간단하게 구현한 방법이다. 이번에는 덧셈의 기능을 하는 add() 뿐만 아니라 뺄셈과 곱셈의 기능을 하는 sub(), mul() 도 구현하고, 로깅 기능도 넣어보도록 하자.
 
 ```java
 
 public int add(int value1, int value2) {
+    long startTime = System.currentTimeMillis();
     log.info("value1 : " + value1 + ", value2 : " + value2);
 
     int result = value1 + value2;
 
     log.info("result : " + result);
+    long endTime = System.currentTimeMillis();
+    log.info("execute time : " + (endTime - startTime));
     return result;
 }
 
 public int sub(int value1, int value2) {
+    long startTime = System.currentTimeMillis();
     log.info("value1 : " + value1 + ", value2 : " + value2);
 
     int result = value1 + value2;
 
     log.info("result : " + result)
+    long endTime = System.currentTimeMillis();
+    log.info("execute time : " + (endTime - startTime));
     return result;
 }
 
 public int mul(int value1, int value2) {
+    long startTime = System.currentTimeMillis();
     log.info("value1 : " + value1 + ", value2 : " + value2);
 
     int result = value * value2; 
 
     log.info("result : " + result);
+    long endTime = System.currentTimeMillis();
+    log.info("execute time : " + (endTime - startTime));
     return result;
 }
 
 ```
 
-함수가 여러개가 되니까 간편하게 구현한 로깅기능에 문제점 하나가 보이는 것 같다. 모두 동일하게 입력되는 파라미터와, 반환되는 결과 값을 보여주는 로그인데 같은 기능을 함에도 소스가 중복이 되고 있다. 이를 개선하기 위해 
+함수가 여러개가 되니까 간편하게 구현한 로깅기능에 문제점 하나가 보이는 것 같다. 모두 동일하게 입력되는 파라미터와, 반환되는 결과 값을 보여주는 로그인데 같은 기능을 함에도 소스가 중복이 되고 있다. 이를 개선하기 위해 로깅을 위한 객체를 새로 만들어 보자
+
