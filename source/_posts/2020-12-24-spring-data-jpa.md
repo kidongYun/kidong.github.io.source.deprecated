@@ -1457,3 +1457,129 @@ public class Demojpaspringdata2Application {
 ```
 logging.level.org.hibernate.type.descriptor.sql=trace
 ```
+
+### 스프링 데이터 JPA 활용
+
+Spring Data 라는 것은 여러 개의 프로젝트를 범주잡아 일컫는 말임. 여기에 JPA, REDIS, REST, MONGODB 등 많은 것들이 포함되어 있음.
+그중 공통적인 작업들을 Spring Data Common 이라는 프로젝트에 넣어뒀는데 여기에 리포지토리를 생성하고, 메소드 쿼리를 구현하는 작업들이 있음.
+
+### Spring Data Common 1. 리포지토리
+
+Spring Data Common 프로젝트에 있는 3개의 상위 리포지토리 - Repository, CrudRepository, PagingAndSortingRepository
+Spring Data Jpa 프로젝트에 있는 리포지토리 - JpaRepository.
+
+@NoRepositoryBean 어노테이션이 붙는 이유 - 이게 붙어있는 리포지토리는 빈으로 등록하는 걸 방지 즉 서브 클래스를 만들어서 상속받아서 사용하라는 이야기.
+
+@DataJpaTest DAO 레벨을 테스트할 떄 이 어노테이션을 스프링부트에서 제공해준다. -> Repository 만 등록이 된다.
+리포지토리만 빈등록 스코프가 잡히기 때문에 빈이 많은 프로젝트의 경우 보다 빈등록하는데에 가볍다.
+
+h2 디비는 메모리 디비를 사용해서 테스트를 하면 실제 어플리케이션에서 사용하는 포스트그레스큐엘 디비에는 영향이 가지 않는다.
+또 H2 디비는 메모리 디비 이기 떄문에 실제 디비를 사용하는것보다 더 빠르다.
+
+```xml
+
+<dependency>
+    <groupId>org.postgresql</groupId>
+    <artifactId>postgresql</artifactId>
+</dependency>
+
+```
+
+import static org.assertj.core.api.Assertions.assertThat 이 라이브러리르 사용하면 아래처럼 코드를 짤 수 있다.
+assertThat(post.getId()).isNull(); 
+
+기본적으로 @Test 테스트 코드는 테스트 이후에 롤백이 된다. 이 트랜잭션 처리하는 롤백기능은 스프링 프레임워큭에서 제공하는 기능.
+롤백을 하고싶지 않다고 하면 어노테이션 추가.
+
+```java
+
+import org.junit.Test;
+import org.junit.runner.RunWith;
+import org.springframework.beans.factory.annotation.Autowired;
+import org.springframework.boot.test.autoconfigure.orm.jpa.DataJpaTest;
+import org.springframework.data.domain.Page;
+import org.springframework.data.domain.PageRequest;
+import org.springframework.test.annotation.Rollback;
+import org.springframework.test.context.junit4.SpringRunner;
+
+import java.util.List;
+
+import static org.assertj.core.api.Assertions.assertThat;
+
+@RunWith(SpringRunner.class)
+@DataJpaTest
+public class PostRepositoryTest {
+
+    @Autowired
+    PostRepository postRepository;
+
+    @Test
+    @Rollback(false)
+    public void crudReposiroy() {
+        // Given
+        Post post = new Post();
+        post.setTitle("hello spring boot common");
+        assertThat(post.getId()).isNull();
+
+        // When
+        Post newPost = postRepository.save(post);
+
+        // Then
+        assertThat(newPost.getId()).isNotNull();
+
+        // When
+        List<Post> posts = postRepository.findAll();
+
+        // Then
+        assertThat(posts.size()).isEqualTo(1);
+        assertThat(posts).contains(newPost);
+
+        // When
+        Page<Post> page = postRepository.findAll(PageRequest.of(0, 10));
+
+        // Then
+        assertThat(page.getTotalElements()).isEqualTo(1);
+        assertThat(page.getNumber()).isEqualTo(0);
+        assertThat(page.getSize()).isEqualTo(10);
+        assertThat(page.getNumberOfElements()).isEqualTo(1);
+
+        // When
+        postRepository.findByTitleContains("spring", PageRequest.of(0, 10));
+
+        // Then
+        assertThat(page.getTotalElements()).isEqualTo(1);
+        assertThat(page.getNumber()).isEqualTo(0);
+        assertThat(page.getSize()).isEqualTo(10);
+        assertThat(page.getNumberOfElements()).isEqualTo(1);
+
+        // When
+        long spring = postRepository.countByTitleContains("spring");
+
+        // Then
+        assertThat(spring).isEqualTo(1);
+    }
+}
+
+import org.springframework.data.domain.Page;
+import org.springframework.data.domain.Pageable;
+import org.springframework.data.jpa.repository.JpaRepository;
+
+public interface PostRepository extends JpaRepository<Post, Long> {
+
+    Page<Post> findByTitleContains(String title, Pageable pageable);
+
+    long countByTitleContains(String title);
+}
+
+```
+
+위 코드는 기존에 만들어져 있는 CrudRepository 와 PagingAndSortingRepository 기능들을 테스트 코드 짜본 것. 의미는 없는데 내가 보기엔 Repository 테스트코드를 이런식으로 작성해야 한다를 보여주는 것 같음.
+
+쿼리 메소드
+
+H2 DB를 사용하고 있는지는 스프링 부트가 뜰때 로그를 보면 알수 있다. 단 @DataJpaTest 어노테이션을 붙여야함. 그리고 의존성을 추가했을 떄.
+
+
+```
+2020-12-25 22:26:27.671  INFO 3476 --- [           main] org.hibernate.dialect.Dialect            : HHH000400: Using dialect: org.hibernate.dialect.H2Dialectㅌㅈ
+```
