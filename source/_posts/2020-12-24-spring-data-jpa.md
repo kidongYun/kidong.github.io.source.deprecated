@@ -305,6 +305,605 @@ sql은 커넥션 생성 작업이 비싸기때문에 성능을 올리려면 한�
 
 객체와 릴레이션의 패러다임이 다르기 때문에 이 갭을 채우기위한 노력을 해야함.
 
+
 ### JPA 프로그래밍 프로젝트 세팅
 
+의존성 추가
 
+```xml
+
+<?xml version="1.0" encoding="UTF-8"?>
+<project xmlns="http://maven.apache.org/POM/4.0.0" xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance"
+         xsi:schemaLocation="http://maven.apache.org/POM/4.0.0 https://maven.apache.org/xsd/maven-4.0.0.xsd">
+    <modelVersion>4.0.0</modelVersion>
+    <parent>
+        <groupId>org.springframework.boot</groupId>
+        <artifactId>spring-boot-starter-parent</artifactId>
+        <version>2.4.1</version>
+        <relativePath/> <!-- lookup parent from repository -->
+    </parent>
+    <groupId>me.whiteship</groupId>
+    <artifactId>demospringdata</artifactId>
+    <version>0.0.1-SNAPSHOT</version>
+    <name>demospringdata</name>
+    <description>Demo project for Spring Boot</description>
+
+    <properties>
+        <java.version>1.8</java.version>
+    </properties>
+
+    <dependencies>
+        <dependency>
+            <groupId>org.springframework.boot</groupId>
+            <artifactId>spring-boot-starter-data-jpa</artifactId>
+        </dependency>
+        <dependency>
+            <groupId>org.postgresql</groupId>
+            <artifactId>postgresql</artifactId>
+        </dependency>
+
+        <dependency>
+            <groupId>org.springframework.boot</groupId>
+            <artifactId>spring-boot-starter-test</artifactId>
+            <scope>test</scope>
+        </dependency>
+    </dependencies>
+
+    <build>
+        <plugins>
+            <plugin>
+                <groupId>org.springframework.boot</groupId>
+                <artifactId>spring-boot-maven-plugin</artifactId>
+            </plugin>
+        </plugins>
+    </build>
+
+</project>
+
+
+```
+
+EntityManager 가 내부적으로 하이버네이트를 사용함 그래서 JPA, 하이버네이트를 직접 사용할 수는 있지만.
+여기서는 Spring Data JPA를 사용할 것임
+
+application.properties 에 기본설정 application.properties 정보는 HibernameJpaAutoConfiguration 이 자동 설정을 해줌.
+
+```
+
+spring.datasource.url=jdbc:postgresql://localhost:5432/springdata
+spring.datasource.username=keesun
+spring.datasource.password=pass
+
+spring.jpa.hibernate.ddl-auto=create
+spring.jpa.properties.hibername.jdbc.lob.non_contextual_creation=true
+
+```
+
+spring.jpa.hibernate.ddl-auto=create 이 속성은 개발할 때 유용하며,
+실제 운영 단계에서는 validate 값을 주는 게 좋다. update는 기존 스키마를 유지하고 새로운 것들만 생성한다. update 의 주의사항은 새로운 컬럼을 추가할 때 자동으로 추가해주는게 편하긴 한데 좋은건 아니다. 왜냐면 반대로 기존 컬럼을 지우려고할때 도메인 객체에서는 지웠지만 실제로 릴레이션에서 보면 남아있다. update를 사용하면 스키마가 지저분해질 수 있따. 또 update를 하면 기존 스키마의 이름을 바꾸면 변경이 안되고 그저 기존 것을 남기고 새로운 걸 추가한다.
+
+```java
+
+@Entity
+public class Account {
+    @Id @GeneratedValue
+    private Long id;
+
+    private String username;
+
+    private String password;
+
+    public Long getId() {
+        return id;
+    }
+
+    public void setId(Long id) {
+        this.id = id;
+    }
+
+    public String getUsername() {
+        return username;
+    }
+
+    public void setUsername(String username) {
+        this.username = username;
+    }
+
+    public String getPassword() {
+        return password;
+    }
+
+    public void setPassword(String password) {
+        this.password = password;
+    }
+}
+
+```
+
+@Entity -> 도메인 객체이며 릴레이션과 매핑하겠다라고 선언
+@Id -> PK 항목임을 선언
+@GeneratedValue -> 값을 자동으로 생성해서 사용하겠다라고 선언 (mysql 의 AUTO_INCREMENT 같은)
+username, password 같은 필드들도 위에서 @Entity 선언을 했기때문에 저 이름으로 컬럼이 생성됨 = @Column 이라는 어노테이션이 생략된것임.
+
+```java
+
+import org.springframework.boot.ApplicationArguments;
+import org.springframework.boot.ApplicationRunner;
+import org.springframework.stereotype.Component;
+
+import javax.persistence.EntityManager;
+import javax.persistence.PersistenceContext;
+import javax.transaction.Transactional;
+
+@Component
+@Transactional
+public class JpaRunner implements ApplicationRunner {
+
+    @PersistenceContext
+    EntityManager entityManager;
+
+    @Override
+    public void run(ApplicationArguments args) throws Exception {
+        Account account = new Account();
+        account.setUsername("keesun");
+        account.setPassword("jpa");
+
+        entityManager.persist(account);
+    }
+}
+
+```
+
+EntityManager가 JPA에 가장 핵심 객체 이를 활용하여 영속화가 가능하다. Entity와 관련된 모든 작업들은 한 트랜잭션 안에서 이루어져야함.
+은행 ATM 출금 기능이 예가 될수 있겠다. DB 업무는 트랜잭션 처리가 정말 중요한듯. 여하튼 이를 위해 @Transactional 어노테이션을 붙여준다.
+
+클래스에 @Transactional 를 붙이면 해당 클래스가 가지고 있는 모든 메서드에 적용이 되고 메서트에 적용하면 해당 메서드에만 적용이 된다.
+
+JPA가 HIBERNAME를 사용하기 때문에 실질적으로 둘 다 사용이 가능하다. HIBERNAME의 가장 핵심적인 메서드는 Session 이다 아래는 Hibernate를 활용해서 영속성 관리를 하는 코드이다. entitymanager 하단에 있는 session 객체를 꺼내오고, 그걸로 save 하고있다.
+
+```java
+
+import org.hibernate.Session;
+import org.springframework.boot.ApplicationArguments;
+import org.springframework.boot.ApplicationRunner;
+import org.springframework.stereotype.Component;
+
+import javax.persistence.EntityManager;
+import javax.persistence.PersistenceContext;
+import javax.transaction.Transactional;
+
+@Component
+@Transactional
+public class JpaRunner implements ApplicationRunner {
+
+    @PersistenceContext
+    EntityManager entityManager;
+
+    @Override
+    public void run(ApplicationArguments args) throws Exception {
+        Account account = new Account();
+        account.setUsername("keesun");
+        account.setPassword("hibernate");
+
+        Session session = entityManager.unwrap(Session.class);
+        session.save(account);
+    }
+}
+
+```
+
+### JPA 프로그래밍 2. 엔티티 타입 매핑
+
+어노테이션 방법과 xml 방법 두가지가 있음 그런데 요즘은 거의 어노테이션 방법만 사용.
+
+@Entity 어노테이션 안에는 @Table 어노테이션이 생략 되어있음. @Entity 어노테이션에 이름을 줄수 있따. 안주면 클래스 이름을 기본적으로 사용,
+주면 준 이름을 사용 이게 테이블까지 가지는 않는다 @Entity 어노테이션에 설정한 이름은 객체 세상에서만 사용되어지는 거고 테이블의 이름을 바꾸고 싶으면 @Table 어노테이션을 사용해야한다. @Table 어노테이션의 기본 이름 설정은 @Entity 어노테이션의 이름이기 때문에 테이블의 이름이 바뀌는것이였다.
+
+@Id 는 주키를 설정하는 어노테이션. 문서상에는 모든 타입을 제공한다. 여기서 논쟁거리 하나가 primitive type을 쓸것이냐 혹은 reference type을 쓸것이냐.
+
+```java
+
+/* primitive type */
+@Id
+private long id;
+
+/* reference type */
+@Id
+private Long id;
+
+```
+
+장점은 long type은 아무값도 안 넣었을때에 0이다. 근데 이 0이 어떤걸 의미할 수도 있다 (의도하지 않았지만) Long은 null로 들어가기때문에 이에대한 처리가 가능. reference 타입을 쓰는 장점이 이거구나..
+
+@GeneratedValue 어노테이션은 자동생성된 값을 사용하겠다는 어노테이션. 기본적으로는 각 데이터베이스의 룰에 맞춰서 생성이됨 SEQ를 쓸건지, Identity 객체를 쓸건지.. 등등 그러나 명시적으로 사용할수 있따. @GeneratedValue(strategy = GenerationType.SEQUENCE, generator = '')  이것 처럼
+
+@Column 컬럼에 사용하는 어노테이션 -> 추가적인 옵션 넣는거가 일반적으로
+@Column(nullable = false, unique = true) 요런식. 
+
+@Temporal 요거는 날짜시간 관련해서 매핑이 가능하다. 3가지 속성이 있다 그떄그떄 맞춰서 쓰자 LocalDate는 자바 1.8 이후에 들온거라서 JPA 2.1 전에는 이 타입에 대한 매핑이 지원이 안된다. Calendar와 Date만 된다. 할수는 있으나 하이버네이트를 커스텀 타입으로 쓰는 고급 기술을 써야한다고 함.
+
+@Transient 어노테이션을 사용하면 이 필드는 컬럼으로 매핑을 안하겟다는 의미이다.
+
+spring.jpa.show-sql=true -> JPA가 자동으로 처리하는 쿼리 내용들을 보여달라는 설정
+spring.jpa.properties.hibernate.format_sql=true -> 저 쿼리 내용들을 보기 쉽게 보여달라는 설정 (단순히 beautify 기능)
+
+### JPA 프로그래밍 3. Value 타입 매핑
+
+Value 타입은 필드를 이야기하는 것 같음. 엔티티 타입은 클래스이고. 여기서는 Reference 타입의 Value에 대한 매핑 하는 방법을 알려주려는 것 같다.
+대표적인 예로 Address 필드.
+
+엔티티로써 사용할만큼 큰 커스텀 클래스라면 @Entity 어노테이션을 써서 기존처럼 새로운 릴레이션을 만들면 된다. 그러나 지금처럼 Address의 경우 그정도의 사이즈는 아니고 단순하게 값을 묶어서 가지고있는 정도이기 때문에 이녀석을 @Embeddable, @Embedded 어노테이션을 활용하면 객체에서는 묶여있지만 릴레이션에서는 모두 포함된 구조로 구현이 가능하다.
+
+이런 타입은 @Embeddable 을 활용해서 만들고, 넣으려고하는 엔티티 객체에 @Embedded 어노테이션과 함꼐 제공하여야 한다.
+```java
+
+@Embeddable
+public class Address {
+    private String street;
+    private String city;
+    private String state;
+    private String zipCode;
+}
+
+```
+
+같은 Embeddable 객체를 한 엔티티 내에 여러번 사용할 경우에는 @AttributeOverrides, @AttributeOverride 어노테이션을 활용해 이름을 오버라이딩할 수 있따.
+
+### JPA 프로그래밍 4. 관계 매핑
+
+1:N 관계 매핑 합시다! 두 개의 엔티티가 서로 맞물려야 할때 이 관계 매핑을 해야한다. 내 객체를 여러 명이 참조가 가능하다. 
+이렇게 하면 실제 릴레이션에는 Account 릴레이션의 PK를 참조하는 FK 값을 Study 릴레이션에 생성해준다. 이 관계에서 방향성은 Study가 Account를 의존하고 있기때문에 참조하고있기때문에 현재 Study가 주인인 객체이다.
+
+```java
+
+import javax.persistence.Entity;
+import javax.persistence.GeneratedValue;
+import javax.persistence.Id;
+import javax.persistence.ManyToOne;
+
+@Entity
+public class Study {
+    @Id @GeneratedValue
+    private Long id;
+
+    private String name;
+
+    @ManyToOne
+    private Account ownwer;
+
+    public Long getId() {
+        return id;
+    }
+
+    public void setId(Long id) {
+        this.id = id;
+    }
+
+    public String getName() {
+        return name;
+    }
+
+    public void setName(String name) {
+        this.name = name;
+    }
+
+    public Account getOwnwer() {
+        return ownwer;
+    }
+
+    public void setOwnwer(Account ownwer) {
+        this.ownwer = ownwer;
+    }
+}
+
+```
+
+이번엔 Account가 주인이라고 생각해보자 Account가 한명이 여러개의 Study를 가질 수 있으므로 아래와 같이 생성하고 @OneToMany 어노테이션을 붙인다.
+@OneToMany 어노테이션이 릴레이션에 매핑될 때에는 기본적으로 조인테이블이 생성된다.
+
+```java
+
+import javax.persistence.*;
+import java.util.HashSet;
+import java.util.Set;
+
+@Entity
+public class Account {
+    @Id @GeneratedValue
+    private Long id;
+
+    private String username;
+
+    private String password;
+
+    @OneToMany
+    private Set<Study> studies = new HashSet<>();
+
+    public Long getId() {
+        return id;
+    }
+
+    public void setId(Long id) {
+        this.id = id;
+    }
+
+    public String getUsername() {
+        return username;
+    }
+
+    public void setUsername(String username) {
+        this.username = username;
+    }
+
+    public String getPassword() {
+        return password;
+    }
+
+    public void setPassword(String password) {
+        this.password = password;
+    }
+
+    public Set<Study> getStudies() {
+        return studies;
+    }
+
+    public void setStudies(Set<Study> studies) {
+        this.studies = studies;
+    }
+}
+
+
+import javax.persistence.Entity;
+import javax.persistence.GeneratedValue;
+import javax.persistence.Id;
+
+@Entity
+public class Study {
+    @Id @GeneratedValue
+    private Long id;
+
+    private String name;
+
+    public Long getId() {
+        return id;
+    }
+
+    public void setId(Long id) {
+        this.id = id;
+    }
+
+    public String getName() {
+        return name;
+    }
+
+    public void setName(String name) {
+        this.name = name;
+    }
+}
+
+```
+
+양방향 참조를 하려면? Study 객체에 Account 객체를 참조하는 필드를 하나 생성하고 @ManyToOne 어노테이션을 붙인다. 이렇게하면 단뱡향으로 2개의 연결관계가 생긴다. 이걸 양방향으로 하고싶다면. Account 객체에서 @OneToMany 속성중 mappedBy에 Study 객체가 Account 객체를 참조하기 위해 사용한 필드의 이름을 넣어준다.
+
+```java
+
+import javax.persistence.*;
+import java.util.HashSet;
+import java.util.Set;
+
+@Entity
+public class Account {
+    @Id @GeneratedValue
+    private Long id;
+
+    private String username;
+
+    private String password;
+
+    @OneToMany(mappedBy = "owner")
+    private Set<Study> studies = new HashSet<>();
+
+    public Long getId() {
+        return id;
+    }
+
+    public void setId(Long id) {
+        this.id = id;
+    }
+
+    public String getUsername() {
+        return username;
+    }
+
+    public void setUsername(String username) {
+        this.username = username;
+    }
+
+    public String getPassword() {
+        return password;
+    }
+
+    public void setPassword(String password) {
+        this.password = password;
+    }
+
+    public Set<Study> getStudies() {
+        return studies;
+    }
+
+    public void setStudies(Set<Study> studies) {
+        this.studies = studies;
+    }
+}
+
+import javax.persistence.Entity;
+import javax.persistence.GeneratedValue;
+import javax.persistence.Id;
+import javax.persistence.ManyToOne;
+
+@Entity
+public class Study {
+    @Id @GeneratedValue
+    private Long id;
+
+    private String name;
+
+    @ManyToOne
+    private Account owner;
+
+    public Long getId() {
+        return id;
+    }
+
+    public void setId(Long id) {
+        this.id = id;
+    }
+
+    public String getName() {
+        return name;
+    }
+
+    public void setName(String name) {
+        this.name = name;
+    }
+}
+
+```
+
+그리고 실제로 데이터를 넣을때에는 결국 도메인 레벨에서는 객체지향 프로그래밍이기 때문에 양 객체에 모두 참조를 넣어주어야 한다.
+
+```java
+
+import org.hibernate.Session;
+import org.springframework.boot.ApplicationArguments;
+import org.springframework.boot.ApplicationRunner;
+import org.springframework.stereotype.Component;
+
+import javax.persistence.EntityManager;
+import javax.persistence.PersistenceContext;
+import javax.transaction.Transactional;
+
+@Component
+@Transactional
+public class JpaRunner implements ApplicationRunner {
+
+    @PersistenceContext
+    EntityManager entityManager;
+
+    @Override
+    public void run(ApplicationArguments args) throws Exception {
+        Account account = new Account();
+        account.setUsername("kidongyun");
+        account.setPassword("hibernate");
+
+        Study study = new Study();
+        study.setName("Spring Data JPA");
+
+        account.getStudies().add(study);
+        study.setOwner(account);
+
+        Session session = entityManager.unwrap(Session.class);
+        session.save(account);
+        session.save(study);
+    }
+}
+
+```
+
+이렇게 한세트로 다니기 때문에 보통 주인인 객체에 함수로 만들고 이들을 함께 호출함.
+
+```java
+
+import javax.persistence.*;
+import java.util.HashSet;
+import java.util.Set;
+
+@Entity
+public class Account {
+    @Id @GeneratedValue
+    private Long id;
+
+    private String username;
+
+    private String password;
+
+    @OneToMany(mappedBy = "owner")
+    private Set<Study> studies = new HashSet<>();
+
+    public Long getId() {
+        return id;
+    }
+
+    public void setId(Long id) {
+        this.id = id;
+    }
+
+    public String getUsername() {
+        return username;
+    }
+
+    public void setUsername(String username) {
+        this.username = username;
+    }
+
+    public String getPassword() {
+        return password;
+    }
+
+    public void setPassword(String password) {
+        this.password = password;
+    }
+
+    public Set<Study> getStudies() {
+        return studies;
+    }
+
+    public void setStudies(Set<Study> studies) {
+        this.studies = studies;
+    }
+
+    public void addStudy(Study study) {
+        this.getStudies().add(study);
+        study.setOwner(this);
+    }
+
+    public void removeStudy(Study study) {
+        this.getStudies().remove(study);
+        study.setOwner(null);
+    }
+}
+
+import org.hibernate.Session;
+import org.springframework.boot.ApplicationArguments;
+import org.springframework.boot.ApplicationRunner;
+import org.springframework.stereotype.Component;
+
+import javax.persistence.EntityManager;
+import javax.persistence.PersistenceContext;
+import javax.transaction.Transactional;
+
+@Component
+@Transactional
+public class JpaRunner implements ApplicationRunner {
+
+    @PersistenceContext
+    EntityManager entityManager;
+
+    @Override
+    public void run(ApplicationArguments args) throws Exception {
+        Account account = new Account();
+        account.setUsername("kidongyun");
+        account.setPassword("hibernate");
+
+        Study study = new Study();
+        study.setName("Spring Data JPA");
+
+        account.addStudy(study);
+
+        Session session = entityManager.unwrap(Session.class);
+        session.save(account);
+        session.save(study);
+    }
+}
+
+```
