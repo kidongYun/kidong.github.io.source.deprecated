@@ -377,6 +377,9 @@ spring.datasource.password=pass
 spring.jpa.hibernate.ddl-auto=create
 spring.jpa.properties.hibername.jdbc.lob.non_contextual_creation=true
 
+spring.jpa.show-sql=true
+spring.jpa.properties.hibernate.format_sql=true
+
 ```
 
 spring.jpa.hibernate.ddl-auto=create 이 속성은 개발할 때 유용하며,
@@ -907,3 +910,212 @@ public class JpaRunner implements ApplicationRunner {
 }
 
 ```
+
+### JPA 프로그래밍 5. 엔티티 상태와 Cascade
+
+Cascade 속성은 @ManyToOne, @OneToMany 어노테이션 옵션으로 가지고 있는데. 의미는 해당 엔티티 상태의 변화를 전파하겠다라는 의미이다.
+이는 DB에서 cascade 옵션이랑 유사한것 같음.
+
+```java
+
+@Entity
+public class Study {
+    @Id @GeneratedValue
+    private Long id;
+
+    private String name;
+
+    @ManyToOne
+    private Account owner;
+}
+
+```
+
+위 코드에서 Study 엔티티가 A 상태에서 B 상태로 전이될때 Account 객체에도 이 전이를 전파하고 싶을때 위와 같이 cascade 옵션으로 제공하면 된다. 기본값은 전파를 하지 않음.
+
+엔티티의 상태는 총 4가지가 있음.
+
+1. Transient
+```java
+
+public void run() {
+    Account account = new Account();
+    account.setUserName("keesun");
+    account.setPassword("jpa");
+}
+
+```
+
+객체 수준에서는 account 객체를 만든것을 인지하고 있지만 이것이 하이버네이트까지 전달되지 않아 릴레이션에는 없는 상태를 Transient 라고합니다.
+
+2. Persistent
+
+```java
+
+session.save(account);
+
+```
+
+위에서 만든 account 인스턴스를 하이버네이트 세션을 통해 영속화를 한 이후에는 Persistent 상태로 바뀐다.
+
+save를 했다고 해서 바로 디비에 들어가는 것은 아니고 하이버네이트가 가지고 있다가. 디비에 넣어야겠다고 판단하는 시점에 들어간다.
+
+여하튼 상태는 바뀜. 하이버네이트가 관리하는 객체가 되는 Persistent 상태가 됨.
+
+이때 제공되는 기능들이 있는데 1차캐시. Persistent Context 라는 곳에 캐싱이 됨.
+
+```java
+
+import org.hibernate.Session;
+import org.springframework.boot.ApplicationArguments;
+import org.springframework.boot.ApplicationRunner;
+import org.springframework.stereotype.Component;
+import org.springframework.transaction.annotation.Transactional;
+
+import javax.persistence.EntityManager;
+import javax.persistence.PersistenceContext;
+
+@Component
+@Transactional
+public class JpaRunner implements ApplicationRunner {
+
+    @PersistenceContext
+    EntityManager entityManager;
+
+    @Override
+    public void run(ApplicationArguments args) throws Exception {
+        Account account = new Account();
+        account.setUsername("kidongyun");
+        account.setPassword("hibernate");
+
+        Study study = new Study();
+        study.setName("Spring Data JPA");
+
+        account.addStudy(study);
+
+        Session session = entityManager.unwrap(Session.class);
+        session.save(account);
+        session.save(study);
+
+        Account keesun = session.load(Account.class, account.getId());
+        System.out.println("============================");
+        System.out.println(keesun.getUsername());
+    }
+}
+```
+
+이런식으로 코딩하게 되면 저 데이터를 디비에서 가져오는게 아니고 1차 캐싱된 Persistent Context 에서 가져옴. 성능의 상승이 있을 수 있다. 위 처럼 코딩하게 되면 keesun 지역변수에 데이터를 가져올때 데이터베이스에서 가져오지 않고 1차 캐시에 해당하는 Persistent Context 영역에서 데이터를 가져온다. 이렇게 캐싱처리를 하고 나서 한 트랜잭션 작업 마무리가 되면 그 이후에 save() 함수를 호출하여 생성한 INSERT 쿼리는 트랜잭션이 끝나고 난 다음에 실제 디비에 반영이 된다.
+
+Dirty checking
+
+```java
+
+import org.hibernate.Session;
+import org.springframework.boot.ApplicationArguments;
+import org.springframework.boot.ApplicationRunner;
+import org.springframework.stereotype.Component;
+import org.springframework.transaction.annotation.Transactional;
+
+import javax.persistence.EntityManager;
+import javax.persistence.PersistenceContext;
+
+@Component
+@Transactional
+public class JpaRunner implements ApplicationRunner {
+
+    @PersistenceContext
+    EntityManager entityManager;
+
+    @Override
+    public void run(ApplicationArguments args) throws Exception {
+        Account account = new Account();
+        account.setUsername("kidongyun");
+        account.setPassword("hibernate");
+
+        Study study = new Study();
+        study.setName("Spring Data JPA");
+
+        account.addStudy(study);
+
+        Session session = entityManager.unwrap(Session.class);
+        session.save(account);
+        session.save(study);
+
+        Account keesun = session.load(Account.class, account.getId());
+        keesun.setUsername("whiteship");
+        System.out.println("============================");
+        System.out.println(keesun.getUsername());
+    }
+}
+
+import org.hibernate.Session;
+import org.springframework.boot.ApplicationArguments;
+import org.springframework.boot.ApplicationRunner;
+import org.springframework.stereotype.Component;
+import org.springframework.transaction.annotation.Transactional;
+
+import javax.persistence.EntityManager;
+import javax.persistence.PersistenceContext;
+
+@Component
+@Transactional
+public class JpaRunner implements ApplicationRunner {
+
+    @PersistenceContext
+    EntityManager entityManager;
+
+    @Override
+    public void run(ApplicationArguments args) throws Exception {
+        Account account = new Account();
+        account.setUsername("kidongyun");
+        account.setPassword("hibernate");
+
+        Study study = new Study();
+        study.setName("Spring Data JPA");
+
+        account.addStudy(study);
+
+        Session session = entityManager.unwrap(Session.class);
+        session.save(account);
+        session.save(study);
+
+        Account keesun = session.load(Account.class, account.getId());
+        keesun.setUsername("whiteship");
+        keesun.setUsername("helloworld");
+        keesun.setUsername("kidongyun");
+        System.out.println("============================");
+        System.out.println(keesun.getUsername());
+    }
+}
+
+```
+ 
+ 위의 코드는 keesun.setUsername("whiteship") 이 부분만 추가한 것인데. 요 코드드 사실 상 쿼리와는 연관이 없음에도 하이버네이트가 알아서 인지하고 업데이트 쿼리르 날려줬다. 무슨 뜻이냐면 엔티티 상태가 Persistent 이면 해당 객체를 하이버네이트나 JPA 가 지속 관리를 하고 있다는 것이다. 한 트랜잭션 스코프가 끝났을 때 해당 객체 값이 변경이 이루어 졌다면 변경을 시켜주고, 새로 생성이된 객체가 있다면 INSERT 쿼리를 날려준다. 중요한 사항은 만약 특정 값이 변경이 100번 이루어 졌고 마지막에 결국 초기의 값과 같아졌다면 이 변경 내역 쿼리는 날라가지 않는다. 이는 쿼리 수정내용을 Persistent Context 검증하는 절차를 가진다는 의미이다.
+
+  Dirty Checking 이라는 것은 이렇게 트랜잭션이 끝날떄마다 변경내용을 지속확인하는 것을 의미.
+  Write Behind 라는것은 Lazy 기법이랑 비슷한 개념인 것 같다. 마지막에 수정한다는 의미.
+
+3. Detached
+
+Session 이 종료가 되면 Persistent 상태에서 Detached 상태로 넘어간다. 이 상태가 되면  Persistent 상태에서 관리되어지는 다양한 기능들은 동작하지 않는다.
+보통 한 Repository 에서 한 트랜잭션이 끝나면 Detached 상태로 전이된다.
+
+```java
+
+/* Detached 상태로 가는 함수들 */
+Session.evict();
+Session.clear();
+Session.close();
+
+/* Re-attached 해사 다시 Persistent 상태가 되는 함수들 */
+Session.update();
+Session.merge();
+Session.saveOrUpdate();
+
+```
+
+4. Removed
+
+------------
+
+Cascading 은 엔티티가 Parent 와 Child 관계인 경우에 주로 사용된다. 부모의 것이 삭제가 되면 자식의 것들도 연쇄적으로 삭제가 되어야 한다.
