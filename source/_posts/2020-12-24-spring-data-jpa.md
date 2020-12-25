@@ -1287,3 +1287,173 @@ session.get() 함수는 해당하는 값이 없는 경우 NULL 리턴, session.l
 ### JPA 프로그래밍 7. 쿼리
 
 지금까지는 HIBERNATE API 에서 제공하는 Session 객체를 활용해서 구현을 했음.
+JPA가 하이버네이트를 감싸고 있다. 내부적으로 사용하고 있따.
+
+#### JPQL (HQL)
+
+Java Persistencec Query Language / Hibernate Query Language
+
+쿼리 모양이 우리가 기존에 알고 있는 SQL과 굉장히 유사하다. 다만 다른 점은 데이터베이스 테이블 기준이 아니고. 엔티티 객체 모델 기반으로 쿼리를 작성한다.
+
+```java
+
+import org.springframework.boot.ApplicationArguments;
+import org.springframework.boot.ApplicationRunner;
+import org.springframework.stereotype.Component;
+import org.springframework.transaction.annotation.Transactional;
+
+import javax.persistence.EntityManager;
+import javax.persistence.PersistenceContext;
+
+@Component
+@Transactional
+public class JpaRunner implements ApplicationRunner {
+
+    @PersistenceContext
+    EntityManager entityManager;
+
+    @Override
+    public void run(ApplicationArguments args) throws Exception {
+        entityManager.createQuery("SELECT p FROM Post AS p");
+    }
+}
+
+```
+JPQL / HQL 은 기존 SQL이 아니기 때문에 데이터베이스 벤더에 독립적이다. 사용되어지는 데이터베이스 쿼리로 변환되어 질의가 실행된다.
+
+쿼리를 어노테이션으로 지정해두고 불러와서도 사용이 가능하다.
+
+
+* toString에 @ManyToOne 타입으로 있는 필드를 찍어놓으면. 필요없이 단순히 습관적으로 한거겠지만. toString 호출시 Comment 관련 쿼리도 날라간다. toString 때문에.
+
+JPA, 하이버네이트 쓸때는 항상 무슨 쿼리를 발생시키는지, 내가 성능이슈를 점검해야하니 의도한건지를 항상 파악해야한다. 학습비용이 드는거지만 어쩔수 없다.
+
+JPQL 의 단점은 TypeSafe 하지 않다. 문자열로 전달되기 때문. -> 타입세이프한 방법이 있따 Criteria 사용해보자
+
+```java
+
+import org.springframework.boot.ApplicationArguments;
+import org.springframework.boot.ApplicationRunner;
+import org.springframework.stereotype.Component;
+import org.springframework.transaction.annotation.Transactional;
+
+import javax.persistence.EntityManager;
+import javax.persistence.PersistenceContext;
+import javax.persistence.criteria.CriteriaBuilder;
+import javax.persistence.criteria.CriteriaQuery;
+import javax.persistence.criteria.Root;
+import java.util.List;
+
+@Component
+@Transactional
+public class JpaRunner implements ApplicationRunner {
+
+    @PersistenceContext
+    EntityManager entityManager;
+
+    @Override
+    public void run(ApplicationArguments args) throws Exception {
+        CriteriaBuilder builder = entityManager.getCriteriaBuilder();
+        CriteriaQuery<Post> query = builder.createQuery(Post.class);
+        Root<Post> root = query.from(Post.class);
+        query.select(root);
+
+        List<Post> posts = entityManager.createQuery(query).getResultList();
+        posts.forEach(System.out::println);
+    }
+}
+
+```
+
+native Query 를 사용하는 방법도 있따.
+
+```java
+
+import org.springframework.boot.ApplicationArguments;
+import org.springframework.boot.ApplicationRunner;
+import org.springframework.stereotype.Component;
+import org.springframework.transaction.annotation.Transactional;
+
+import javax.persistence.EntityManager;
+import javax.persistence.PersistenceContext;
+import java.util.List;
+
+@Component
+@Transactional
+public class JpaRunner implements ApplicationRunner {
+
+    @PersistenceContext
+    EntityManager entityManager;
+
+    @Override
+    public void run(ApplicationArguments args) throws Exception {
+        List<Post> posts = entityManager.createNativeQuery("Select * from Post", Post.class)
+                .getResultList();
+
+        posts.forEach(System.out::println);
+    }
+}
+
+```
+
+### 스프링 데이터 JPA 원리
+
+EntityManager 를 직접 쓰던 상황에서 이제 Repository 라는 DAO 유사한 녀석을 만들고 여기 안에서 이 EntityManager 활용한 디비 작업을 모으기 시작함. 이걸 또 제네릭화 시키고 최종적으로 JpaRepository<T, ID> 형태로 공통화시켜 이걸 상속받기만 하면 되는 구조가 되어있음.
+
+@EnableJpaRepositories 어노테이션은 Repository 관련 빈들을 자동 등록해주는 어노테이션인데 스프링 부트에는 자동설정을 해주기 때문에(Auto Configuration 방법으로 ). 이 어노테이션을 붙이지 않아도 되고. 또 각 Repository에 @Repository 어노테이션을 붙이지 않아도 됨.
+
+기존에 EntityManager 을 활용해서 사요하는 방식보다 이 Spring Data JPA는 결국 Repository 부분을 보면 기본적인 CRUD 쿼리들은 제공이 되기 때문에 이를 사용하고 되면 이 말은 즉은 내가 만든 코드가 아니기때문에 테스트 영역 줄어둔다. 코드가 적으니 생산성이 살아나고, 유지보수도 좋아진다.
+
+@EnableJpaRepositories 어노테이션 안을 살펴보면 JpaRepositoriesRegistrar 클래스를 임포트 하고 있는데 이녀석이 바로 JPA Repository 들을 주입해주는 역할을 한다. 요 녀석은 JpaRepository 를 상속받는 Repository 들을 찾아서 빈으로 등록해준다. 이를 예제로 코딩해보면 아래와 같다.
+
+```java
+
+public class Keesun {
+    private String name;
+
+    public String getName() {
+        return name;
+    }
+
+    public void setName(String name) {
+        this.name = name;
+    }
+}
+
+import org.springframework.beans.factory.support.BeanDefinitionRegistry;
+import org.springframework.beans.factory.support.BeanNameGenerator;
+import org.springframework.beans.factory.support.GenericBeanDefinition;
+import org.springframework.context.annotation.ImportBeanDefinitionRegistrar;
+import org.springframework.core.type.AnnotationMetadata;
+
+public class KeesunRegistrar implements ImportBeanDefinitionRegistrar {
+    @Override
+    public void registerBeanDefinitions(AnnotationMetadata importingClassMetadata, BeanDefinitionRegistry registry, BeanNameGenerator importBeanNameGenerator) {
+        GenericBeanDefinition beanDefinition = new GenericBeanDefinition();
+        beanDefinition.setBeanClass(Keesun.class);
+        beanDefinition.getPropertyValues().add("name", "whiteship");
+
+        registry.registerBeanDefinition("keesun", beanDefinition);
+    }
+}
+
+@SpringBootApplication
+@Import(KeesunRegistrar.class)
+public class Demojpaspringdata2Application {
+
+    public static void main(String[] args) {
+        SpringApplication.run(Demojpaspringdata2Application.class, args);
+    }
+
+}
+
+```
+
+보면 Keesun 클래스가 빈 등록을 위한 어노테이션이 없음에도 KeesunRegistrar 객체에서 Keesun 객체를 프로그래밍적으로 빈 등록을 해주고 있따.
+내가 만든 Repository 클래스들도 위와 같은 방식으로 JpaRepositoriesRegistrar 요 객체가 등록을 해준다.
+
+물음표로 나오는 값을 실제 값이 나오게끔 로깅하는 방법.
+
+```
+logging.level.org.hibernate.type.descriptor.sql=trace
+```
