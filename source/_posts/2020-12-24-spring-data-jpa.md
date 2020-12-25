@@ -1119,3 +1119,171 @@ Session.saveOrUpdate();
 ------------
 
 Cascading 은 엔티티가 Parent 와 Child 관계인 경우에 주로 사용된다. 부모의 것이 삭제가 되면 자식의 것들도 연쇄적으로 삭제가 되어야 한다.
+
+* Convenience method = 양방향으로 두 객체가 서로 참조하고 있는 경우에 어떤 행위가 일어나면 그거에 대한 작업을 두 방향 모두 해주도록 하는 함수. 내가 직접 만들어야함 위에서 addStudy(), removeStudy() 함수가 이러한 메서드 이다.
+
+Cascading 사용 예시를 위해 부모, 자식 구조를 가지는 Entity Post, Comment 를 구현하자.
+
+```java
+
+import javax.persistence.*;
+import java.util.HashSet;
+import java.util.Set;
+
+@Entity
+public class Post {
+    @Id
+    @GeneratedValue
+    private Long id;
+
+    private String title;
+
+    @OneToMany(mappedBy = "post", cascade = CascadeType.PERSIST)
+    private Set<Comment> comments = new HashSet<>();
+
+    public void addComment(Comment comment) {
+        this.getComments().add(comment);
+        comment.setPost(this);
+    }
+
+    public Long getId() {
+        return id;
+    }
+
+    public void setId(Long id) {
+        this.id = id;
+    }
+
+    public String getTitle() {
+        return title;
+    }
+
+    public void setTitle(String title) {
+        this.title = title;
+    }
+
+    public Set<Comment> getComments() {
+        return comments;
+    }
+
+    public void setComments(Set<Comment> comments) {
+        this.comments = comments;
+    }
+}
+
+import javax.persistence.Entity;
+import javax.persistence.GeneratedValue;
+import javax.persistence.Id;
+import javax.persistence.ManyToOne;
+
+@Entity
+public class Comment {
+    @Id
+    @GeneratedValue
+    private Long id;
+
+    private String comment;
+
+    @ManyToOne
+    private Post post;
+
+    public Long getId() {
+        return id;
+    }
+
+    public void setId(Long id) {
+        this.id = id;
+    }
+
+    public String getComment() {
+        return comment;
+    }
+
+    public void setComment(String comment) {
+        this.comment = comment;
+    }
+
+    public Post getPost() {
+        return post;
+    }
+
+    public void setPost(Post post) {
+        this.post = post;
+    }
+}
+
+import org.hibernate.Session;
+import org.springframework.boot.ApplicationArguments;
+import org.springframework.boot.ApplicationRunner;
+import org.springframework.stereotype.Component;
+import org.springframework.transaction.annotation.Transactional;
+
+import javax.persistence.EntityManager;
+import javax.persistence.PersistenceContext;
+
+@Component
+@Transactional
+public class JpaRunner implements ApplicationRunner {
+
+    @PersistenceContext
+    EntityManager entityManager;
+
+    @Override
+    public void run(ApplicationArguments args) throws Exception {
+        Post post = new Post();
+        post.setTitle("Spring Data JPA 언제 보나...");
+
+        Comment comment = new Comment();
+        comment.setComment("빨리 보고 싶어요.");
+        post.addComment(comment);
+
+        Comment comment1 = new Comment();
+        comment1.setComment("곧 보여드릴게요.");
+        post.addComment(comment1);
+
+        Session session = entityManager.unwrap(Session.class);
+        session.save(post);
+
+        Post post = session.get(Post.class, 1L);
+        session.delete(post);
+    }
+}
+
+
+```
+
+위처럼 돌리면 comment를 save 하는 함수가 없지만. post가 자기가 하위로 가지고있는 comment 엔티티가 있고. 이를 Cascading 시켰기 때문에. post save 시에 comment에 관련된 내용이. 전파되어 추가된다. delete 되는 부분도 마찬가지로 post를 삭제하면 plan이 cascading 되어 삭제된다.
+
+위 예제는 한 트랜잭션에서 발생했기 때문에 실제로는 save() 함수가 동작하지 않는 것은 참고. 따로따로 두번의 트랜잭션으로 작업해봐야 예제가 정상적으로 돌거다.
+
+### JPA 프로그래밍 6. Fetch
+
+연관관계의 엔티티를 어떻게 가져올 것이냐... 지금가져온다면 (Eager) 나중에 가져온다면 (Lazy)
+
+기본적으로 @OneToMany 어노테이션은 Lazy 방법으로 가져온다. 예를 들어 위에서 구현한 Post 객체와 Comment 객체로 참고해보면.
+Post 객체를 가져오는 것은 단일 건인데 Comment 건은 복수개로 얼마나 많은지를 알수가 없다. 이러한 상황에서 Post 만가져와도 되는 비지니스 로직이라면 많은 수를 가지고 있는 Comment 객체를 가져오는 것은 비효율적이기 때문에 Lazy loading 방법으로 가져온다. 반대로 @ManyToOne 은 EAGER 방식이다.
+
+```java
+
+@OneToMany(fetch = FetchType.LAZY)
+
+@ManyToOne(fetch = FetchType.EAGER)
+
+
+Post post = session.get(Post.class, 1L);
+System.out.println(post.getTitle());
+
+Comment comment = session.get(Comment.class, 2L);
+System.out.println(comment.getComment());
+System.out.println(comment.getPost().getTitle());
+
+```
+
+session.get() 함수는 해당하는 값이 없는 경우 NULL 리턴, session.load() 는 없는 경우 예외를 반환, 프록시로도 가져올 수 있따.
+
+이걸 잘 조절해야 성능 이슈를 해결할 수 있다. 가장 흔한 N+1 의 문제.
+
+
+### JPA 프로그래밍 7. 쿼리
+
+지금까지는 HIBERNATE API 에서 제공하는 Session 객체를 활용해서 구현을 했음.
