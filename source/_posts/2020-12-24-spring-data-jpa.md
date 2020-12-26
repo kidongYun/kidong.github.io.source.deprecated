@@ -1922,4 +1922,259 @@ public class PostRepositoryTest {
 
 이방법은 내가 생각한게 아니고. JpaRepository 가 기본적으로 제공하지ㅇ 않는 어떤 기능을 모든 Repository 들이 공통적으로 사용하게끔 하고 싶을때 사용하는 방법.
 
-### Spring Data Common 9. 도메인 이벤트
+### Spring Data Common 9. 도메인 이벤트 퍼블리싱 기능
+
+도메인 엔티티의 변화를 이벤트로써 발생시키고, 이벤트리스너가 이러한 변화를 감지하고, 이벤트 기반의 프로그래밍이 가능하게끔 하는 것.
+
+ApplicationContext 는 우리가 아는 IoC의 기능을 하는 BeanFactory 를 상속을 받았고 또 ApplicationEventPublisher 도 상속을 받았다.
+
+모든 스프링에는 이벤트 기반 코딩이 가능하다. 이를 지원한다.
+
+우선 먼저 스프링에서 제공하는 이벤트기반 코딩 예시를 살펴보자.
+
+테스트 코드에서 빈관련 설정 코드 넣을 때에는 필요로하는 객체 + TestConfig 라고 이름짓고 클래스르 만든다음.
+주입받으려고하는 객체 빈 등록해주고, 이 설정 파일을 테스트할때 사용하려면 테스트 클래스에 @Import(객체 + TestConfig.class) 넣어주면 된다.
+
+
+```java
+
+import org.springframework.context.ApplicationEvent;
+
+public class PostPublishedEvent extends ApplicationEvent {
+    private final Post post;
+
+    public PostPublishedEvent(Object source) {
+        super(source);
+        this.post = (Post) source;
+    }
+
+    public Post getPost() {
+        return post;
+    }
+}
+
+```
+
+```java
+
+import org.junit.Test;
+import org.junit.runner.RunWith;
+import org.springframework.beans.factory.annotation.Autowired;
+import org.springframework.boot.test.autoconfigure.orm.jpa.DataJpaTest;
+import org.springframework.context.ApplicationContext;
+import org.springframework.context.annotation.Import;
+import org.springframework.test.context.junit4.SpringRunner;
+
+import static org.assertj.core.api.Assertions.assertThat;
+
+@RunWith(SpringRunner.class)
+@DataJpaTest
+@Import(PostRepositoryTestConfig.class)
+public class PostRepositoryTest {
+    @Autowired
+    PostRepository postRepository;
+
+    @Autowired
+    ApplicationContext applicationContext;
+
+    @Test
+    public void event() {
+        Post post = new Post();
+        post.setTitle("event");
+        PostPublishedEvent event = new PostPublishedEvent(post);
+
+        applicationContext.publishEvent(event);
+    }
+}
+
+```
+
+```java
+
+import org.springframework.context.ApplicationListener;
+
+public class PostListener implements ApplicationListener<PostPublishedEvent> {
+    @Override
+    public void onApplicationEvent(PostPublishedEvent event) {
+        System.out.println("-------------------------");
+        System.out.println(event.getPost() + " is published!");
+        System.out.println("-------------------------");
+    }
+}
+
+```
+
+```java
+
+import org.springframework.context.annotation.Bean;
+import org.springframework.context.annotation.Configuration;
+
+@Configuration
+public class PostRepositoryTestConfig {
+
+    @Bean
+    public PostListener postListener() {
+        return new PostListener();
+    }
+}
+
+```
+
+이러한 구조의 이벤트 코딩을 할수 있또록 스프링 데이터에서도 제공한다.
+
+스프링 데이터 Common 10. QueryDSL 연동
+
+사용 이유.
+
+1. 조건문을 표현하는 방법이 굉장히 타입세이프 하다. 조건문들을 조합할 수 있다.
+
+2. 쿼리 메서드의 단점은 함수의 이름이 굉장히 길어지는 단점이 있다. 가독성 감소.
+
+```xml
+
+<?xml version="1.0" encoding="UTF-8"?>
+<project xmlns="http://maven.apache.org/POM/4.0.0" xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance"
+         xsi:schemaLocation="http://maven.apache.org/POM/4.0.0 https://maven.apache.org/xsd/maven-4.0.0.xsd">
+    <modelVersion>4.0.0</modelVersion>
+    <parent>
+        <groupId>org.springframework.boot</groupId>
+        <artifactId>spring-boot-starter-parent</artifactId>
+        <version>2.4.1</version>
+        <relativePath/> <!-- lookup parent from repository -->
+    </parent>
+    <groupId>me.whiteship</groupId>
+    <artifactId>querydsldemo</artifactId>
+    <version>0.0.1-SNAPSHOT</version>
+    <name>querydsldemo</name>
+    <description>Demo project for Spring Boot</description>
+
+    <properties>
+        <java.version>1.8</java.version>
+    </properties>
+
+    <dependencies>
+        <dependency>
+            <groupId>org.springframework.boot</groupId>
+            <artifactId>spring-boot-starter-data-jpa</artifactId>
+        </dependency>
+        <dependency>
+            <groupId>com.querydsl</groupId>
+            <artifactId>querydsl-apt</artifactId>
+        </dependency>
+        <dependency>
+            <groupId>com.querydsl</groupId>
+            <artifactId>querydsl-jpa</artifactId>
+        </dependency>
+
+        <dependency>
+            <groupId>com.h2database</groupId>
+            <artifactId>h2</artifactId>
+            <scope>runtime</scope>
+        </dependency>
+        <dependency>
+            <groupId>org.springframework.boot</groupId>
+            <artifactId>spring-boot-starter-test</artifactId>
+            <scope>test</scope>
+        </dependency>
+        <dependency>
+            <groupId>junit</groupId>
+            <artifactId>junit</artifactId>
+            <scope>test</scope>
+        </dependency>
+    </dependencies>
+
+    <build>
+        <plugins>
+            <plugin>
+                <groupId>org.springframework.boot</groupId>
+                <artifactId>spring-boot-maven-plugin</artifactId>
+            </plugin>
+            <plugin>
+                <groupId>com.mysema.maven</groupId>
+                <artifactId>apt-maven-plugin</artifactId>
+                <version>1.1.3</version>
+                <executions>
+                    <execution>
+                        <goals>
+                            <goal>process</goal>
+                        </goals>
+                        <configuration>
+                            <outputDirectory>target/generated-sources/java</outputDirectory>
+                            <processor>com.querydsl.apt.jpa.JPAAnnotationProcessor</processor>
+                        </configuration>
+                    </execution>
+                </executions>
+            </plugin>
+        </plugins>
+    </build>
+</project>
+
+```
+
+```java
+
+package me.whiteship.querydsldemo.account;
+
+import javax.persistence.Entity;
+import javax.persistence.GeneratedValue;
+import javax.persistence.Id;
+
+@Entity
+public class Account {
+    @Id @GeneratedValue
+    private Long id;
+
+    private String username;
+
+    private String firstName;
+
+    private String lastName;
+
+    public Long getId() {
+        return id;
+    }
+
+    public void setId(Long id) {
+        this.id = id;
+    }
+
+    public String getUsername() {
+        return username;
+    }
+
+    public void setUsername(String username) {
+        this.username = username;
+    }
+
+    public String getFirstName() {
+        return firstName;
+    }
+
+    public void setFirstName(String firstName) {
+        this.firstName = firstName;
+    }
+
+    public String getLastName() {
+        return lastName;
+    }
+
+    public void setLastName(String lastName) {
+        this.lastName = lastName;
+    }
+}
+
+```
+
+```java
+
+import org.springframework.data.jpa.repository.JpaRepository;
+import org.springframework.data.querydsl.QuerydslPredicateExecutor;
+
+public interface AccountRepository extends JpaRepository<Account, Long>, QuerydslPredicateExecutor<Account> {
+
+}
+
+
+```
+
+QuerydslPredicateExecutor 이 클래스에는 findOne, findAll 두가지 함수가 존재. findOne은 단일 건으로 Optional로 결과를 반환하고 findAll은 컬렉션으로 반환.
