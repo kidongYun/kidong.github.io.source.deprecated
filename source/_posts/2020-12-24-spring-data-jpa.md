@@ -1581,5 +1581,351 @@ H2 DB를 사용하고 있는지는 스프링 부트가 뜰때 로그를 보면 �
 
 
 ```
-2020-12-25 22:26:27.671  INFO 3476 --- [           main] org.hibernate.dialect.Dialect            : HHH000400: Using dialect: org.hibernate.dialect.H2Dialectㅌㅈ
+2020-12-25 22:26:27.671  INFO 3476 --- [           main] org.hibernate.dialect.Dialect            : HHH000400: Using dialect: org.hibernate.dialect.H2Dialect
 ```
+
+### Spring Data Common 2. 인터페이스 정의하기
+
+지금까지는 스프링데이타 Common 이나 스프링 데이터 JPA 에서 제공하는 리포지토리의 기능이 들어오는게 싫다. 내가 다 정의하고 싶은 경우.
+
+```java
+
+import org.springframework.data.repository.RepositoryDefinition;
+import java.util.List;
+
+@RepositoryDefinition(domainClass = Comment.class, idClass = Long.class)
+public interface CommentRepository {
+
+    Comment save(Comment comment);
+
+    List<Comment> findAll();
+}
+
+```
+
+이렇게 @RepositoryDefinition 어노테이션을 활용해서 직접 정의가 가능하다. 이런식으로 정의했을 때 공통적으로 쓰이는 기능들을 묶고싶다면. Repository 객체의 최상위 인터페이스인 Repository를 상속받고 이를 통해 구현하도록 하자.
+
+```java
+
+import org.springframework.data.repository.NoRepositoryBean;
+import org.springframework.data.repository.Repository;
+
+import java.io.Serializable;
+import java.util.List;
+
+@NoRepositoryBean
+public interface MyRepository<T, ID extends Serializable> extends Repository<T, ID> {
+
+    <E extends T> E save(E Comment);
+
+    List<T> findAll();
+}
+
+public interface CommentRepository extends MyRepository<Comment, Long> {
+
+}
+
+```
+JpaRepository 같은걸 커스텀하게 만들었다고 생각하면 되겠다.
+
+### Spring Data Common 3. Null 처리
+
+단일 값을 받을때 Optional 로 받는것을 권장. List로 받는것은 Null이 안나온다. 아마 갯수는 없는 List의 형태의 객체가 나올듯(비어있는 콜렉션). 그렇기때문에 List 로 받는 것은 Optional 로 받을 필요가 없음. 이건 Spring Data JPA 특징. 이걸 통해서 컬렉션 구조를 반환하는 함수는 결코 NULL이 되지 않음.
+
+@NonNull, @Nullable
+
+```java
+
+import org.springframework.data.repository.NoRepositoryBean;
+import org.springframework.data.repository.Repository;
+import org.springframework.lang.NonNull;
+import org.springframework.lang.Nullable;
+
+import java.io.Serializable;
+import java.util.List;
+import java.util.Optional;
+
+@NoRepositoryBean
+public interface MyRepository<T, ID extends Serializable> extends Repository<T, ID> {
+    <E extends T> E save(@NonNull E Comment);
+
+    List<T> findAll();
+
+    long count();
+
+    @Nullable
+    <E extends T> Optional<E> findById(ID id);
+}
+
+import org.junit.jupiter.api.Test;
+import org.junit.runner.RunWith;
+import org.springframework.beans.factory.annotation.Autowired;
+import org.springframework.boot.test.autoconfigure.orm.jpa.DataJpaTest;
+import org.springframework.test.context.junit4.SpringRunner;
+
+@RunWith(SpringRunner.class)
+@DataJpaTest
+class CommentRepositoryTest {
+
+    @Autowired
+    CommentRepository commentRepository;
+
+    @Test
+    public void crud() {
+        commentRepository.save(null);
+    }
+}
+
+```
+
+파라미터에 Null이 들어가면 안될 때 해당 파라미터에 @NonNull 어노테이션을 붙이면 IDE에서 점검이 가능하고 런타임시에 Null이 들어갔다고 exception이 발생한다.
+
+### Spring Data Common 4. 쿼리 만들기
+
+쿼리 만드는 방법은 2가지가 있다.
+
+@EnableJpaRepositories(queryLookupStrategy = QueryLookupStrategy.Key.CREATE)
+1. 쿼리 메서드 (메소드 이름을 분석해서 쿼리 만들기)
+
+@EnableJpaRepositories(queryLookupStrategy = QueryLookupStrategy.Key.USE_DECLARED_QUERY)
+2. @Query 어노테이션 활용 (미리 정의해 둔 쿼리 찾아 사용하기.) 기본값은 JPQL 이며 SQL 을 사용하고 싶다면 옵션중에 nativeQuery를 true로 적용.
+
+이거가 디폴트 맞네
+3. 미리 정의한 쿼리를 찾아보고(메서드 쿼리를 찾아보고) 없으면 만들기. -> 이거를 사용하고 싶으면 @EnableJpaRepositories 이 어노테이션에 
+@EnableJpaRepositories(queryLookupStrategy = QueryLookupStrategy.Key.CREATE_IF_NOT_FOUND) 이렇게 옵션을 주면 됨.
+
+쿼리 찾는 방법.
+
+@Query
+
+@Procedure
+
+@NamedQuery
+
+```
+
+메서드 쿼리 사용시 규칙
+
+접두어 : Find, Get, Query, Count
+
+도입부 : Distinct, First(N), Top(N) /* 생략 가능* /
+
+프로퍼티 표현식 : 
+
+```
+
+보통 리포지토리는 한 엔티티를 위한 리포지토리로 구현이 되어야함. 그렇기 때문에 내가 생각했던 그 JpaBeanRepository를 만드는 것은 모두를 위한 리포지토리를 만드는 것이기 때문에 내가 볼때는 Spring Data jpa의 정책에 조금 어긋난 방법이지 않았나. 그래서 서비스단에서 Repository를 기본 CRUD에 대해서 하나로 묶고 싶다면 JpaService 하나에 Repository를 여러개 넣는 방법이 최선일것 같고.
+
+Pageable 객체에 Paging 관련 기능과 sorting 관련 기능이 같이 있다 이걸 활용하면되고, sorting만 해야할 경우에는 Sort 객체 활용. 보통 쿼리를 만들때에는 Pageable를 권장.
+
+
+
+(1) 메서드 쿼리로 구현이 가능한지 확인
+
+확인하는방법 -> 테스트를 만들어서 확인하면됨
+
+(2) 메서드 쿼리를 잘 만든건지 확인 -> 그냥 돌려보면 된다ㅏ. 비어있는 테스트 함수 하나 만들고 돌리면 됨.
+
+(3) 쿼리DSL 사용
+
+### Spring Data Common 5. 쿼리 만들기 실습
+
+ignoreCase 를 쓰면 upper() 쿼리가 추가되어 대소문자 구분이 사라진다.
+
+Stream<> 타입으로 받으면 try-with-resouce 문법을 사용할 것 Stream을 다쓴다음에 close() 해야함.
+
+```java
+
+import org.springframework.data.domain.Page;
+import org.springframework.data.domain.Pageable;
+
+import java.util.List;
+
+public interface CommentRepository extends MyRepository<Comment, Long> {
+
+    List<Comment> findByCommentContains(String keyword);
+
+    List<Comment> findByCommentContainsIgnoreCase(String keyword);
+
+    List<Comment> findByCommentContainsIgnoreCaseAndLikeCountGreaterThan(String keyword, Integer likeCount);
+
+    List<Comment> findByCommentContainsIgnoreCaseOrderByLikeCountDesc(String keyword);
+
+    List<Comment> findByCommentContainsIgnoreCaseOrderByLikeCountAsc(String keyword);
+
+    Page<Comment> findByCommentContainsIgnoreCase(String keyword, Pageable pageable);
+}
+
+```
+
+### Spring Data Common 7. 커스텀 리포지토리 만들기
+
+255자 이상의 컬럼은 @Lob 어노테이션을 넣어주면 됨.
+
+#### 스프링 데이터 리포지토리 인터페이스 기능에 추가
+
+커스텀 리포지토리는 JPA, SPRING 에 침투받지 않음. 순수한 POJO 객체임 이거를 구현하는 Impl 클래스를 만들고 여기에서 EntityManager 를 통해 직접 데이터 액세스하는 부분을 구현한다.
+그리고 커스텀 리포지토리를 JpaRepository를 상속하고 있는 비지니스별 Repository에 같이 상속시켜준다.
+
+
+
+```java
+
+import java.util.List;
+
+public interface PostCustomRepository<T> {
+    List<Post> findMyPost();
+
+    void delete(T entity);
+}
+
+```
+
+```java
+
+import org.springframework.beans.factory.annotation.Autowired;
+import org.springframework.stereotype.Repository;
+
+import javax.persistence.EntityManager;
+import javax.transaction.Transactional;
+import java.util.List;
+
+@Repository
+@Transactional
+public class PostCustomRepositoryImpl implements PostCustomRepository<Post> {
+    @Autowired
+    EntityManager entityManager;
+
+    @Override
+    public List<Post> findMyPost() {
+        System.out.println("custom findMyPost");
+        return entityManager.createQuery("SELECT p FROM Post AS p", Post.class).getResultList();
+    }
+
+    @Override
+    public void delete(Post entity) {
+        System.out.println("custom delete");
+        entityManager.detach(entity);
+    }
+}
+
+```
+
+```java
+
+import org.springframework.data.jpa.repository.JpaRepository;
+
+public interface PostRepository extends JpaRepository<Post, Long>, PostCustomRepository<Post> {
+
+}
+
+
+```
+
+
+Impl 이라는 용어가 싫으면 @EnableJpaRepositories 요 어노테이션에 repositoryImplementationPostfix 옵션에 원하는 문구로 바꾸면 됨.
+
+### 스프링 데이터 Common 8. 기본 리포지토리 커스터마이징
+
+모든 리포지토리에 공통적으로 추가하고 싶은 기능이 있거나 덮어쓰고 싶은 기본 기능이 있다면. 이렇게하자
+
+우선 내가 했던대로 JpaRepository<T, ID> 요걸 상속하는 Repository를 하나 만든다. 다른점은 구현체를 하나더 만들고 이 구현체는 SImpleJpaRepository를 상속
+
+entityManager.contains -> persistent context에 해당 객체가 있는지 없는지를 확인해주는 함수
+
+JpaRepository 를 상속한 리포지토리는 @NoRepositoryBean 등록 바로 빈등록 하면 안된다고 얘기하는 것임
+
+```java
+
+import org.springframework.data.jpa.repository.JpaRepository;
+import org.springframework.data.repository.NoRepositoryBean;
+
+import java.io.Serializable;
+
+@NoRepositoryBean
+public interface MyRepository<T, ID extends Serializable> extends JpaRepository<T, ID> {
+    boolean contains(T entity);
+}
+
+```
+
+```java
+
+import org.springframework.data.jpa.repository.support.JpaEntityInformation;
+import org.springframework.data.jpa.repository.support.SimpleJpaRepository;
+
+import javax.persistence.EntityManager;
+import java.io.Serializable;
+
+public class SimpleMyRepository<T, ID extends Serializable> extends SimpleJpaRepository<T, ID> implements MyRepository<T, ID> {
+
+    private EntityManager entityManager;
+
+    public SimpleMyRepository(JpaEntityInformation<T, ?> entityInformation, EntityManager entityManager) {
+        super(entityInformation, entityManager);
+        this.entityManager = entityManager;
+    }
+
+    @Override
+    public boolean contains(T entity) {
+        return entityManager.contains(entity);
+    }
+}
+
+```
+
+```java
+
+import org.springframework.boot.SpringApplication;
+import org.springframework.boot.autoconfigure.SpringBootApplication;
+import org.springframework.data.jpa.repository.config.EnableJpaRepositories;
+
+@SpringBootApplication
+@EnableJpaRepositories(repositoryBaseClass = SimpleMyRepository.class)
+public class Demojpa3Application {
+
+    public static void main(String[] args) {
+        SpringApplication.run(Demojpa3Application.class, args);
+    }
+
+}
+
+```
+
+```java
+
+import org.junit.Test;
+import org.junit.runner.RunWith;
+import org.springframework.beans.factory.annotation.Autowired;
+import org.springframework.boot.test.autoconfigure.orm.jpa.DataJpaTest;
+import org.springframework.test.context.junit4.SpringRunner;
+
+import static org.assertj.core.api.Assertions.assertThat;
+
+@RunWith(SpringRunner.class)
+@DataJpaTest
+public class PostRepositoryTest {
+    @Autowired
+    PostRepository postRepository;
+
+    @Test
+    public void crud() {
+        Post post = new Post();
+        post.setTitle("hibernate");
+
+        assertThat(postRepository.contains(post)).isFalse();
+
+        postRepository.save(post);
+
+        assertThat(postRepository.contains(post)).isTrue();
+
+        postRepository.delete(post);
+        postRepository.flush();
+    }
+}
+
+```
+
+이방법은 내가 생각한게 아니고. JpaRepository 가 기본적으로 제공하지ㅇ 않는 어떤 기능을 모든 Repository 들이 공통적으로 사용하게끔 하고 싶을때 사용하는 방법.
+
+### Spring Data Common 9. 도메인 이벤트
