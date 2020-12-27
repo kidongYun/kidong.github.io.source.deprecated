@@ -5,289 +5,9 @@ date:   2020-12-24 11:38:54 +0900
 categories: spring
 ---
 
-이 글은 백기선 개발자님의 Spring Data JPA 강의를 듣고 JPA 관련 내용들을 정리한 글이다. 기본적으로 해당 강좌에서 언급되는 개념으로 진행되지만, 저자의 JPA 경험을 토대로 이해한 바가 함께 녹아있으므로 그 부분은 참고하고 글을 읽어주시기 바란다.
-
-## JDBC를 활용해 자바에서 관계형 데이터베이스 연동하기
-
-자바와 같은 호스트 언어와 오라클과 같은 관계형 데이터베이스들은 실제로는 독립적이며 별도로 동작된다. 실무의 많은 곳에서 이 둘을 버무려서 사용하고 있지만 근본적으로 이 둘은 역할이 다름을 먼저 이해하고 들어가야 한다. 자바에서 데이터베이스와 연동을 하기 위해서 JPA, Mybatis 등 많은 오픈소스들이 존재하지만 이들의 근본에는 JDBC가 있다. JDBC는 자바 언어에서 데이터베이스에 접근하기 위해서 사용하는 모듈이라고 생각하면 되고, 이를 기반으로 DDL, DML 같은 쿼리들을 데이터베이스에 요청할 수 있다. 우선 간략하게 전통적인 방법으로 JDBC를 활용해 어떻게 자바가 데이터베이스와 연동이 되는지를 살펴보자.
-
-여기서는 Postgresql 데이터베이스를 사용하며 도커기반으로 이 데이터베이스를 설치한다.
-
-```
-> docker run -p 5432:5432 -e POSTGRES_PASSWORD=pass -e POSTGRES_USER=keesun -e POSTGRES_DB=springdata --name postgres_boot -d postgres
-
-> docker exec -i -t postgres_boot bash
-
-> psql --username keesun --dbname springdata
-
-```
-
-위의 명령어를 통해서 postgresql 데이터베이스를 설치하고, 내부로 접속이 가능하다. 그 다음에는 Maven 프로젝트를 만들고 pom.xml 파일에 postgresql 데이터베이스에 접속하기 위한 드라이버 의존성을 주입한다. JDBC는 각 데이터베이스마다 다른 드라이버를 가지고 있으며 이에 맞게 의존성을 주입해야한다. 예를 들어 오라클 데이터베이스를 사용한다고 하면 오라클 데이터베이스에 맞는 JDBC 드라이버를 설치해야한다.
-
-```xml
-
-<?xml version="1.0" encoding="UTF-8"?>
-<project xmlns="http://maven.apache.org/POM/4.0.0"
-         xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance"
-         xsi:schemaLocation="http://maven.apache.org/POM/4.0.0 http://maven.apache.org/xsd/maven-4.0.0.xsd">
-    <modelVersion>4.0.0</modelVersion>
-
-    <groupId>me.whiteship</groupId>
-    <artifactId>jdbcsample</artifactId>
-    <version>1.0-SNAPSHOT</version>
-
-    <dependencies>
-        <dependency>
-            <groupId>org.postgresql</groupId>
-            <artifactId>postgresql</artifactId>
-            <version>42.2.2</version>
-        </dependency>
-    </dependencies>
-
-</project>
-
-```
-
-JDBC를 통해서 postgresql 데이터배이스에 연동하는 소스를 작성해보자. JDBC를 통해 데이터베이스에 연동을 할때 필요한 정보는 url, usename, password 인데 각각의 의미는 아래와 같다.
-
-```
-
-url - 어떤 데이터베이스를 바라보는지를 알려주기 위한 데이터베이스 경로.
-username - url에 해당하는 데이터베이스에 접근할 때 사용할 계정.
-password - 계정에 해당하는 비밀번호.
-
-```
-
-```java
-
-import java.sql.Connection;
-import java.sql.DriverManager;
-import java.sql.SQLException;
-
-public class Application {
-    public static void main(String[] args) throws SQLException {
-        String url = "jdbc:postgresql://localhost:5432/springdata";
-        String username = "keesun";
-        String password = "pass";
-
-        try(Connection connection = DriverManager.getConnection(url, username, password)) {
-            System.out.println("Connection created: " + connection);
-        }
-    }
-}
-
-```
-
-추가적으로 위 연동 소스에는 try-with-resource 문법을 사용하고 있는데 이 문법은 자원 연동과 관련된 소스를 감싸주면 해당 소스의 작업이 끝났을 때 연결 해제의 작업을 자동으로 진행해준다. 이전에는 try-catch-finally 문법으로 작성해서 finally 부분에 자원해제를 위한 코드를 항상 작성해야 했었는데 이 부분이 더 간편해진 버전이다. Java 7 이후 부터 제공하고 있는 문법임으로 참고하도록 하자.
-
-아래는 JDBC를 활용해서 테이블을 생성하는 예제이다. 우리 글의 목표는 JPA를 아는 것 임으로 이 소스에 대한 상세 설명은 생략한다. 다만 데이터베이스에 연동을 하기 위해 어떤 과정을 거치고 있는지 확인하고 어떤 부분에서 개선되면 좋을지를 생각해보자.
-
-```java
-
-import java.sql.Connection;
-import java.sql.DriverManager;
-import java.sql.PreparedStatement;
-import java.sql.SQLException;
-
-public class Application {
-    public static void main(String[] args) throws SQLException {
-        String url = "jdbc:postgresql://localhost:5432/springdata";
-        String username = "keesun";
-        String password = "pass";
-
-        try(Connection connection = DriverManager.getConnection(url, username, password)) {
-            System.out.println("Connection created: " + connection);
-            String sql = "CREATE TABLE ACCOUNT (id int, username varchar(255), password varchar(255));";
-
-            try(PreparedStatement statement = connection.prepareStatement(sql)) {
-                statement.execute();
-            }
-        }
-    }
-}
-
-
-```
-
-아래는 JDBC를 활용해서 데이터를 삽입하는 예제이다.
-
-```java
-
-import java.sql.Connection;
-import java.sql.DriverManager;
-import java.sql.PreparedStatement;
-import java.sql.SQLException;
-
-public class Application {
-    public static void main(String[] args) throws SQLException {
-        String url = "jdbc:postgresql://localhost:5432/springdata";
-        String username = "keesun";
-        String password = "pass";
-
-        try(Connection connection = DriverManager.getConnection(url, username, password)) {
-            System.out.println("Connection created: " + connection);
-            String sql = "INSERT INTO ACCOUNT VALUES(1, 'keesun', 'pass');";
-
-            try(PreparedStatement statement = connection.prepareStatement(sql)) {
-                statement.execute();
-            }
-        }
-    }
-}
-
-```
-
-이렇게 JDBC를 활용해서 데이터베이스에 연동을 했을 때 문제가 되는 부분은 무엇이 있을까?
-
-#### 1. 테이블에 있는 데이터를 가져와서 자바 도메인 객체로 바꿔야 하는 작업을 해야한다.
-위의 예시에서는 SELECT 하는 부분이 없었지만. SELECT를 하게되면 보통 ResultSet 이라는 JDBC에서 사용하는 특유의 객체로 반환된다. 해당 객체는 리스트 타입의 객체들을 cursor 라는 요소로 접근해야 한다. 이러한 방식은 조금은 전통적인 방법이 되어버렸고 더 중요하게는 이러한 ResultSet 객체를 Java 표준 Collection 객체로 변환해야 한다. 그렇지 않고 ResultSet 을 그대로 Java 도메인 영역에서도 사용하게 되면 그 프로젝트의 소스는 JDBC 에 의존적인 소스를 작성하게 되는 것이다.
-
-#### 2. 데이터베이스 커넥션을 만드는 작업은 굉장히 비싼 작업이다. (JPA를 사용하면 상대적으로 커넥션을 덜 생성할 수 있다.)
-JDBC를 통해 데이터베이스에 연결을 하는 작업 자체가 굉장히 시간이 오래 걸리는 작업이다. 그렇기 때문에 실무에서는 보통 DBCP 라는 것을 활용해 데이터베이스 연결을 위한 풀을 만들어 둔다. 시간이 오래 걸리는 작업을 매번 새로 만드는 것은 비효율적이기 때문이다. 이 부분은 JPA를 활용하면 데이터베이스 커넥션하는 횟수를 JDBC를 그냥 사용하는 것 보다 덜 생성할 수 있다. (물론 JDBC로도 가능하지만 이를 다 구현해야한다.) 예를 들어 어떤 필드의 값을 100번 업데이트하는 쿼리가 있다고 하자. 근데 100번째의 쿼리가 1번째의 쿼리와 동일한 값을 넣는다면. 사실 1번째 쿼리를 제외하고는 모두 무의미하다. 결국 값이 1번째 쿼리의 값과 같아졌기 때문이다. 이럴때 JDBC를 순수하게 사용한다면 100번의 커넥션 연결 작업을 하지만 JPA는 내부의 상태관리를 통해서 이러한 쿼리들을 검증하고 1번의 쿼리를 날린다.
-
-#### 3. SQL이 어느정도는 표준이지만 DB마다 다르다. 그래서 DB 종류를 바꾸면 쿼리도 바껴야한다.
-이 개념은 JVM과 유사하다. Java가 처음 등장했을 때 강력했던 이유는 운영체제에 종속적이지 않고 프로그래밍이 가능하다는 것이였다. JVM 에서 운영체제에 맞게 코드를 컴파일, 빌딩 해준다. SQL를 바로 사용하는 것은 데이터베이스마다 SQL 문법이 조금씩 다르기 때문에 데이터베이스를 바꾸게되면 SQL 부분을 모두 바꾸어야 하는 이슈가 발생한다. 하지만 JPA에서 사용하는 JPQL은 DB를 바라보고 쿼리를 짜는 것이 아니기 때문에 데이터베이스에 독립적이게 된다.
-
-#### 4. 모든데이터를 가져오는게 아니고 필요한 데이터만을 가져오기가 어렵다.
-한 도메인에 해당하는 데이터들을 쿼리를 날려서 가져왔다고 생각해보자. 이 중에 유독 양이 많은 한 필드가 있어서 쿼리의 속도가 느려진다고 하면, 우리는 성능 향상을 위해 이 필드는 필요할때만 가져오도록 다르게 쿼리를 작성할 것이다. Lazy-Loading의 개념인데 쿼리로는 이러한 것들을 모두 직접 구현해야 하지만 JPA에서는 이미 구현되어 있어서 어노테이션 하나를 붙이면 이러한 방식으로 동작하도록 할 수 있다.
-
-여기에서 나오는 대부분의 단점은 사실 JDBC로도 구현이 가능하다. 왜냐하면 결국 JPA도 JDBC로 구현되어 있기 때문이다. 그러나 위와 같은 단점을 모두 극복한 쿼리, 코드를 작성하는 것은 훨씬 많은 고민을 해야하고, 많은 코드를 작성해야한다. JPA는 이러한 고민과 코드들을 오픈소스화 시켜둔 하나의 라이브러리라고 생각하면 보다 이질감 덜할 것 같다. 필수는 아니지만 권장이다. 여기서는 JDBC를 기준으로 JPA를 사용해야하는 이유를 언급하고 있지만 사실 Mybatis와 비교해도 이와 거의 다르지 않다고 본다.
-
-## ORM 개요
-
-ORM의 기본적인 개념은 애플리케이션의 클래스와 SQL 데이터베이스의 테이블 사이의 매핑 정보를 기술한 메타데이터를 사용하여, 자바 애플리케이션의 객체를 SQL 데이터베이스의 테이블에 자동으로 또 꺠끗하게 영속화 해주는 기술입니다. 보다 쉽게 말하자면 Objct와 Relation을 적절하게 Mapping하는 기술이다. 현존하는 대부분의 웹서비스는 관계형 데이터베이스에서 데이터를 가져오고 이를 자바와 같은 호스트 언어로 비즈니스 로직을 다룬 후 화면으로 전달하게 된다. 여기서 관계형 데이터베이스는 데이터들을 테이블이라고 보통 부르는 Relation 기준으로 생성, 관리하고 호스트 언어에서는 도메인 객체 기준으로 데이터를 생성, 관리한다. 이 둘을 매핑시켜주는 역할을 하는 것이 ORM 이다.
-
-```
-
-ORM : Object Relation Mapping
-Object : 자바에서의 도메인 모델
-Relation : 데이터베이스의 테이블
-
-```
-
-그러면 왜 도메인 모델을 사용해서 데이터베이스 작업을 할 수 있는게 왜 좋을까? 여기서 말하는 도메인은 DTO, DAO 등은 제외하고 순수히 해당 자바 프로젝트가 O.O.P 방식으로 비지니스를 표현하고 구햔히기 위한 POJO 객체를 일컫는다.  
-
-#### 1. 자바에서 비지니스 로직을 구현하려면 결국 SQL로 데이터를 가져와도 결국 자바 객체로 매핑을 해야 한다.
-결국 최종적으로 그것이 도메인이 아니여도 이와 유사한 자바의 객체로 변환을 해야하는 것은 필수적이다.
-
-#### 2. 디자인패턴을 적용하기 수월하다.
-현존하는 대부분 디자인패턴의 가이드는 O.O.P 기반임으로 적용하기가 쉬워진다.
-
-#### 3. 우리의 비지니스 로직에 집중이 가능해진다.
-오직 비지니스 도메인기준으로 기능들을 만들어 낼 수 있음으로 실제 사업에 중요한 비지니스 로직에 보다 더 집중할 수 있다.
-
-이번에는 왜 JPA, 하이버네이트를 사용하게되면 얻게되는 장점을 생각해보자
-
-#### 1. 생산성
-도메인 데이터와 릴레이션 간 변환 작업이 굉장히 간단하다. 실제 컴퓨터가 하는 작업량이 줄어든다는 의미가 아니고 소스코드 레벨에서 간단해진다는 의미이다. 
-
-#### 2. 유지보수성
-SQL관련 코드가 적어지고 운영에 필요한 비지니스 로직코드만 남기 떄문에  테스트 코드 작성도 편리해지고 가독성이 높아진다.
-
-#### 3. 성능
-이 이슈는 JPA 에서 가장 두드러지게 언급되는 이슈인데. SQL과 JPA의 성능 비교는 C와 Java의 성능 비교하는 것과 유사하다. C에서는 객체를 사용하고 난 이후에 개발자가 메모리 확보를 위해 연결 해제 작업을 직접 해야하지만 자바는 가비지 컬렉터가 객체의 연결을 해제시키는 역할을 해주기 때문에 연결 해제 작업에 대해서 직접 코딩할 필요는 없다. 물론 필요한 상황들이 있을 떄에는 직접 접근이 가능하다. 이처럼 SQL과 JPA의 관계도 SQL은 많은 것을 개발자가 하도록 되어 있기 때문에 상당 부분 쿼리를 직접 조정하지만 JPA는 독자적인 객체들의 상태를 관리하고 캐싱을한다. 이 캐싱되어 있는 데이터들이 쿼리를 날려야하는 상황인지 아닌지를 판단한다. GC처럼 JPA에게 개발자가 해야할 일을 조금은 넘겨준 것이다. 그렇기에 JPA를 잘 알지 못하고 사용한다면 성능은 SQL 보다 느릴 수 밖에 없지만. 잘 알고 사용한다면 오히려 SQL 보다 더 쉬운 코드로 좋은 쿼리를 작성해낼 수 있다.
-
-#### 4. 벤더 독립성
-여기서 벤더는 데이터베이스를 말하며, 데이터베이스의 종류에 상관없이 자바에서 쿼리를 동일한 형태로 작성할 수 있다. JPQL, 메서드 쿼리, Querydsl 모두 릴레이션이 아닌 엔티티 기준으로 쿼리를 작성하기 떄문에 일관된 쿼리 작성이 가능하다. 즉 실무에서 데이터베이스를 바꿔야하는 이슈가 생긴 경우, 쿼리의 수정 작업 없이 데이터베이스만 변경할 수 있다.
-
-JPA의 가장 치명적인 단점은 바로 학습비용이 너무 크다는 것이다.
-
-#### 1. 학습비용
-JPA를 쓴다고 해서 기존의 SQL 쿼리를 몰라도 되는 것은 아니다. 내가 JPA 로 작성한 쿼리가 SQL 쿼리 변경되었을 떄 정상적인지를 판단할 수 있어야 성능 튜닝이 가능하다 알아야함. 
-즉 둘다 알아야 ORM을 잘 쓸수 있으며, 잘 모르고 쓴다면 SQL 쿼리로 작업하는 것 보다 못하다. 결국 JPA도 SQL 쿼리 처럼 JDBC 근본에서 동작하기 때문에 성능 이슈가 있는 상황이라면, SQL 쿼리처럼 작성하여 해결 가능하다.
-
-## ORM: 패러다임 불일치
-
-객체와 릴레이션사이에 매핑을 할떄 서로 잘 맞지 않는 부분.
-
-1. 밀도의 문제
-
-```java
-
-class Account {
-    Long id;
-
-    Address address;
-
-    List<Study> studies; 
-}
-
-class Account {
-    Long id;
-
-    String address;
-
-    List<Study> studies;
-}
-
-```
-
- 객체는 커스텀한 타입을 만들어내기가 쉽지만 릴레이션은 그렇지 않다. 테이블 타입, 기본 데이터 타입이 전부. 이 두 타입 간의 매칭 불일치 문제. ex)날짜 타입
-
- 2. 서브타입 (상속)
-
- 객체는 클래스간의 상속구조를 만들기가 쉽다. 그게 사실 기본인데 릴레이션에는 상속이라는 개념이 없다.
- 이를 표현하는 표준적인 기술은 없다.
- 
- ORM에서 이에대한 대안은 여러가지로 제안해줌.
-
-3. 데이터 네비게이션 문제.
-
-요건 먼소리냥.
-
-4. 관계 문제
-
-```java
-
-public class User {
-    List<Study> myStudy;
-}
-
-public class Study {
-    List<User>
-}
-
-```
-
-위와 같이 객체는 필드를 가지고 어떤 객체를 참조하고 있는지 그 관계를 표현할 수 있다.
-
-또 위처럼 User가 Study를 참조하고 있는 것처럼 그 방향성에 대한 부분도 위 객체 생성시 명시가 가능하다.
-
-또 다대다 관계를 가질 수 있다.
-
-릴레이션은 외래키로 관계를 표현하며 방향성이 사실 없다.
-
-태생적으로 다대다 관계를 만들지 못하면 조인테이블, 링크 테이블을 활용해서 묶어야함.
-
-이런 관계를 표현하는 방법에 미매칭.
-
-Study 테이블에서 User 테이블의 FK 를 가지고 있다고 하자. 두 테이블을 조인하고 이 FK 값을 비교해서 결국 두 테이블의 원하는 방향성으로 데이터를 가져올 수 있따.
-즉 방향성은 양방향임.
-
-릴레이션은 다대다가 없기 때문에 ManyToMany 어노테이션을 사용하면 JPA, 하이버네이트가 내부적으로 이를 조인테이블을 만들어서 작업해줌.
-
-5. 데이터 네비게이션 문제.
-
-객체 내부에서의 네비게이션은 각 객체.필드 형태로 계속 순회가 가능함. 다 돌아다닐 수 있음.
-
-릴레이션은 이렇게 하려면 가능은하지만 한번의 조회가 다 쿼리를 날리는 거기때문에 성능이 안좋다.
-sql은 커넥션 생성 작업이 비싸기때문에 성능을 올리려면 한번의 쿼리로 날리는게 좋다.
-
-그러나 한번의 쿼리로 날린다는 것은 모두 조인한다는 건데. 이 많은 데이터를 한번에 가져오는게 또 좋은것인가.
-모두다 쓰는데이터가 맞는가.
-
-이 둘을 잘 조율 해야하나비ㅏ.
-
-자주접근하는것도 안좋고 많이 접근하는것도 안좋다.
-
-->  lazy loading 을 하자. -> n +1  문제 발생
-
-객체와 릴레이션의 패러다임이 다르기 때문에 이 갭을 채우기위한 노력을 해야함.
-
-
 ### JPA 프로그래밍 프로젝트 세팅
 
-의존성 추가
+Maven 프로젝트를 활용해서 간단하게 JPA 프로그래밍이 가능한 환경을 구축해보자. 우선 의존성을 추가한다. JPA 관련 기능이 담겨져 있는 'spring-boot-starter-data-jpa' 라이브러리와 당신이 사용할 데이터베이스의 JDBC 드라이버를 가져오자 여기서는 postgresql 데이터베이스를 사용하기 때문에 이 의존성을 가져왔다.
 
 ```xml
 
@@ -339,13 +59,9 @@ sql은 커넥션 생성 작업이 비싸기때문에 성능을 올리려면 한�
 
 </project>
 
-
 ```
 
-EntityManager 가 내부적으로 하이버네이트를 사용함 그래서 JPA, 하이버네이트를 직접 사용할 수는 있지만.
-여기서는 Spring Data JPA를 사용할 것임
-
-application.properties 에 기본설정 application.properties 정보는 HibernameJpaAutoConfiguration 이 자동 설정을 해줌.
+postgresql 데이터베이스에 접속하기 위해 필요한 정보 url, username, password 를 입력하자. 그리고 개발의 편의를 위해 추가적인 설정들도 넣었는데 이는 주석으로 내용을 설명해 두었다. 이렇게 application.properties에 설정한 정보들은 HibernameJpaAutoConfiguration 이 자동 설정을 해준다.
 
 ```
 
@@ -353,10 +69,14 @@ spring.datasource.url=jdbc:postgresql://localhost:5432/springdata
 spring.datasource.username=keesun
 spring.datasource.password=pass
 
+// 스프링 서버 재시작시 DDL을 항상 새로만들지, 업데이트할지, 검증만할지를 결정한다.
 spring.jpa.hibernate.ddl-auto=create
+
 spring.jpa.properties.hibername.jdbc.lob.non_contextual_creation=true
 
+// 우리가 만든 JPA 쿼리가 기존 SQL 쿼리로 어떻게 변환되어 날라가는지 보여준다.
 spring.jpa.show-sql=true
+// 이 쿼리를 개행 등을 하여 좀 더 보기 쉽게 보여준다
 spring.jpa.properties.hibernate.format_sql=true
 
 ```
