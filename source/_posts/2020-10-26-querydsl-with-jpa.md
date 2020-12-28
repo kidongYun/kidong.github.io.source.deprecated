@@ -5,9 +5,11 @@ date:   2020-10-26 11:38:54 +0900
 categories: java
 ---
 
+Gradle 프로젝트 기준으로 JPA에 QueryDSL을 연동하는 방법을 알아본다.
+
 ### build.gradle
 
-add the plugin related to querydsl.
+QueryDSL은 QClass라는 객체를 자동으로 생성하고 이를 기반으로 타입 세이프한 쿼리를 작성할 수 있도록 돕는다. 이 QClass 객체들이 생성이 될 수 있도록 아래처럼 플러그인을 추가해줘야한다.
 
 ```
 
@@ -21,7 +23,7 @@ plugins {
 
 ```
 
-add the dependency of querydsl for jpa.
+아래는 QueryDSL 의존성 추가하는 코드이다.
 
 ```
 
@@ -35,8 +37,7 @@ dependencies {
 
 ```
 
-and we should set the directory path for putting on the QClass files, which is created when you build querydsl.
-Those objects are needed when you consist the querydsl.
+QueryDSL이 QClass를 만들 때 어느 경로에 생성할지와 같은 부가적인 설정 정보이다.
 
 ```
 
@@ -65,11 +66,12 @@ test {
 
 ```
 
-Let's open the gradle window and build it. then you can see the QClass files in the root directory which is set at the above.
+여기까지 추가했다면 Gradle 탭을 열고 Gradle build를 하자. 그러면 위에서 설정한 경로에 QClass 파일이 생성될 것이다.
+확인해보자.
 
 ### QuerydslConfig.java
 
-The main object for creating querydsl is JPAQueryFactory. we gotta set this object as a bean.
+QueryDSL로 쿼리를 만들때 주로 사용하게 되는 객체는 JPAQueryFactory이다. 이 객체를 빈으로 등록하여 사용하자.
 
 ```java
 
@@ -84,92 +86,67 @@ public class QuerydslConfig {
 
 ```
 
-After this, We could access this using the bean annotation like @Autowired, @Resource, @RequiredArgsConstructor and so on
-
-It's the end of the basic setting for using querydsl. if you already have the entity, repository then you just create new custom repository with querydsl.
-
 ### Entity
 
-It's my example source code in my project. It could be little difficult bcs this code has my business thing. I mean it is not simple entity.
+QueryDSL이 정상 동작하는지 확인하기 위해 샘플 Entity를 만든다.
 
 #### Cell.java
-
-```java
-
-@Getter
-@Setter
-@ToString
-@Component
-@MappedSuperclass
-public class Cell {
-    protected String type;
-    protected LocalDateTime startDateTime;
-    protected LocalDateTime endDateTime;
-}
-
-```
-
-#### Subject.java
-
-```java
-
-@Getter
-@Setter
-@ToString(callSuper = true)
-@Component
-@Entity
-@Inheritance(strategy = InheritanceType.JOINED)
-public abstract class Subject extends Cell {
-    @Id
-    @GeneratedValue(strategy= GenerationType.SEQUENCE, generator = "SEQ_GEN")
-    @SequenceGenerator(name = "SEQ_GEN", sequenceName = "ID_SEQ")
-    @Column(name = "ID")
-    protected long id;
-
-    @Column(name = "STATUS")
-    protected int status;
-}
-
-```
-
-#### Objective.java
 
 ```java
 
 @Slf4j
 @Getter
 @Setter
-@ToString(callSuper = true)
-@Component
+@ToString
+@SuperBuilder
+@NoArgsConstructor
+@AllArgsConstructor
 @Entity
-@Table(name = "OBJECTIVE")
-@AttributeOverrides({
-        @AttributeOverride(name = "startDateTime", column = @Column(name = "OBJ_START_DATETIME")),
-        @AttributeOverride(name = "endDateTime", column = @Column(name = "OBJ_END_DATETIME")),
-        @AttributeOverride(name = "status", column = @Column(name = "OBJ_STATUS"))
-})
-public class Objective extends Subject {
-    @Column(name = "OBJ_TITLE")
-    private String title;
+@Inheritance(strategy = InheritanceType.JOINED)
+public class Cell {
+    public enum Type { Objective, Plan, Todo }
 
-    @Column(name = "OBJ_DESCRIPTION")
-    private String description;
+    @Id
+    @GeneratedValue
+    protected Long id;
 
-    @Column(name = "OBJ_PRIORITY")
-    private int priority;
+    protected LocalDateTime startDateTime;
+
+    protected LocalDateTime endDateTime;
+
+    protected String status;
+
+    protected Type type;
+
+    @ManyToOne(cascade = CascadeType.PERSIST)
+    protected Member member;
 }
 
 ```
 
 ### Repository
 
-First one is basic repository is offered from Spring Data JPA. You can use method query using this.
+QueryDSL이 정상 동작하는지 확인하기 위해 샘플 Repository 만든다. JpaRepository를 상속받는 메인 Repository를 만들고 Custom Repository를 만든다. 그 후에 Custom Repository의 구현체를 만들고 여기서 QueryDSL을 사용한다.
 
-#### ObjectiveRepository.java
+#### CellRepository.java
 
 ```java
 
-public interface ObjectiveRepository extends SubjectRepository<Objective, Long> {}
+@Transactional
+public interface CellRepository<T extends Cell> extends JpaRepository<T, Long>, CellRepositoryCustom<T> {
+    List<T> findByType(Cell.Type type);
+}
+
+public interface CellRepositoryCustom<T extends Cell> {
+}
+
+@RequiredArgsConstructor
+public class CellRepositoryCustomImpl<T extends Cell> implements CellRepositoryCustom<T> {
+    private final JPAQueryFactory queryFactory;
+
+    
+}
+
 
 ```
 
