@@ -5,13 +5,498 @@ date:   2020-12-24 11:38:54 +0900
 categories: spring
 ---
 
-### 엔티티 타입 매핑
+이 글은 백기선 개발자님의 Spring Data JPA 강의를 듣고 JPA 관련 내용들을 정리한 글이다. 기본적으로 해당 강좌에서 언급되는 개념으로 진행되지만, 저자의 JPA 경험을 토대로 이해한 바가 함께 녹아있으므로 그 부분은 참고하고 글을 읽어주시기 바란다.
 
-JPA에서 객체와 릴레이션간에 매핑을 위해 메타데이터를 생성하는 방법은 어노테이션 방법과 xml방법 두 가지가 있다. 그런데 요즘은 거의 어노테이션 방법만 사용하고 있다. 파일이 구분되지 않고 가독성이 높아지기 떄문인데 이는 스프링 설정 방법이 어노테이션 방식으로 바뀌어 가는 것과 동일하다고 본다.
+### JDBC를 활용해 자바에서 관계형 데이터베이스 연동하기
 
-@Entity 어노테이션에 설정한 이름은 객체 세상에서만 사용되어지는 거고 테이블의 이름을 바꾸고 싶으면 @Table 어노테이션을 사용해야 한다. @Table 어노테이션은 릴레이션 관련 정보를 설정하는 어노테이션이다. 테이블의 이름을 변경하고 싶다면 이 어노테이션에 옵션으로 주면 된다. 그런데 이 어노테이션은 @Entity 어노테이션과 옵션을 바라보고 있기 때문에 @Entity 어노테이션의 옵션으로 이름을 변경하게 되면, @Table 어노테이션의 이름도 마찬가지로 변경된다. 
+자바와 같은 호스트 언어와 오라클과 같은 관계형 데이터베이스들은 실제로는 독립적이며 별도로 동작된다. 실무의 많은 곳에서 이 둘을 버무려서 사용하고 있지만 근본적으로 이 둘은 역할이 다름을 먼저 이해하고 들어가야 한다. 자바에서 데이터베이스와 연동을 하기 위해서 JPA, Mybatis 등 많은 오픈소스들이 존재하지만 이들의 근본에는 JDBC가 있다. JDBC는 자바 언어에서 데이터베이스에 접근하기 위해서 사용하는 모듈이라고 생각하면 되고, 이를 기반으로 DDL, DML 같은 쿼리들을 데이터베이스에 요청할 수 있다. 우선 간략하게 전통적인 방법으로 JDBC를 활용해 어떻게 자바가 데이터베이스와 연동이 되는지를 살펴보자.
 
-@Id 는 주키를 설정하는 어노테이션. 문서 상에는 모든 타입을 제공한다. 여기서 발논쟁거리 하나가 int, long과 같은 원시타입을 써야하는지 혹은 객체타입을 써야하는지에 대한 이슈이다. 백기선 강사님은 객체타입을 사용하는 걸 추천하는데 숫자를 원시타입으로 사용할 경우 초기 값에 0이 들어가게 되고, 이 0 값이 특정 비지니스에서는 필요한 값일 수도 있기 때문에 초기 값을 null을 넣는 걸 권장하기 때문이다.  
+여기서는 Postgresql 데이터베이스를 사용하며 도커기반으로 이 데이터베이스를 설치한다.
+
+```
+> docker run -p 5432:5432 -e POSTGRES_PASSWORD=pass -e POSTGRES_USER=keesun -e POSTGRES_DB=springdata --name postgres_boot -d postgres
+
+> docker exec -i -t postgres_boot bash
+
+> psql --username keesun --dbname springdata
+
+```
+
+위의 명령어를 통해서 postgresql 데이터베이스를 설치하고, 내부로 접속이 가능하다. 그 다음에는 Maven 프로젝트를 만들고 pom.xml 파일에 postgresql 데이터베이스에 접속하기 위한 드라이버 의존성을 주입한다. JDBC는 각 데이터베이스마다 다른 드라이버를 가지고 있으며 이에 맞게 의존성을 주입해야한다. 예를 들어 오라클 데이터베이스를 사용한다고 하면 오라클 데이터베이스에 맞는 JDBC 드라이버를 설치해야한다.
+
+```xml
+
+<?xml version="1.0" encoding="UTF-8"?>
+<project xmlns="http://maven.apache.org/POM/4.0.0"
+         xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance"
+         xsi:schemaLocation="http://maven.apache.org/POM/4.0.0 http://maven.apache.org/xsd/maven-4.0.0.xsd">
+    <modelVersion>4.0.0</modelVersion>
+
+    <groupId>me.whiteship</groupId>
+    <artifactId>jdbcsample</artifactId>
+    <version>1.0-SNAPSHOT</version>
+
+    <dependencies>
+        <dependency>
+            <groupId>org.postgresql</groupId>
+            <artifactId>postgresql</artifactId>
+            <version>42.2.2</version>
+        </dependency>
+    </dependencies>
+
+</project>
+
+```
+
+JDBC를 통해서 postgresql 데이터배이스에 연동하는 소스를 작성해보자. JDBC를 통해 데이터베이스에 연동을 할때 필요한 정보는 url, usename, password 인데 각각의 의미는 아래와 같다.
+
+```
+
+url - 어떤 데이터베이스를 바라보는지를 알려주기 위한 데이터베이스 경로.
+username - url에 해당하는 데이터베이스에 접근할 때 사용할 계정.
+password - 계정에 해당하는 비밀번호.
+
+```
+
+```java
+
+import java.sql.Connection;
+import java.sql.DriverManager;
+import java.sql.SQLException;
+
+public class Application {
+    public static void main(String[] args) throws SQLException {
+        String url = "jdbc:postgresql://localhost:5432/springdata";
+        String username = "keesun";
+        String password = "pass";
+
+        try(Connection connection = DriverManager.getConnection(url, username, password)) {
+            System.out.println("Connection created: " + connection);
+        }
+    }
+}
+
+```
+
+추가적으로 위 연동 소스에는 try-with-resource 문법을 사용하고 있는데 이 문법은 자원 연동과 관련된 소스를 감싸주면 해당 소스의 작업이 끝났을 때 연결 해제의 작업을 자동으로 진행해준다. 이전에는 try-catch-finally 문법으로 작성해서 finally 부분에 자원해제를 위한 코드를 항상 작성해야 했었는데 이 부분이 더 간편해진 버전이다. Java 7 이후 부터 제공하고 있는 문법임으로 참고하도록 하자.
+
+아래는 JDBC를 활용해서 테이블을 생성하는 예제이다. 우리 글의 목표는 JPA를 아는 것 임으로 이 소스에 대한 상세 설명은 생략한다. 다만 데이터베이스에 연동을 하기 위해 어떤 과정을 거치고 있는지 확인하고 어떤 부분에서 개선되면 좋을지를 생각해보자.
+
+```java
+
+import java.sql.Connection;
+import java.sql.DriverManager;
+import java.sql.PreparedStatement;
+import java.sql.SQLException;
+
+public class Application {
+    public static void main(String[] args) throws SQLException {
+        String url = "jdbc:postgresql://localhost:5432/springdata";
+        String username = "keesun";
+        String password = "pass";
+
+        try(Connection connection = DriverManager.getConnection(url, username, password)) {
+            System.out.println("Connection created: " + connection);
+            String sql = "CREATE TABLE ACCOUNT (id int, username varchar(255), password varchar(255));";
+
+            try(PreparedStatement statement = connection.prepareStatement(sql)) {
+                statement.execute();
+            }
+        }
+    }
+}
+
+
+```
+
+아래는 JDBC를 활용해서 데이터를 삽입하는 예제이다.
+
+```java
+
+import java.sql.Connection;
+import java.sql.DriverManager;
+import java.sql.PreparedStatement;
+import java.sql.SQLException;
+
+public class Application {
+    public static void main(String[] args) throws SQLException {
+        String url = "jdbc:postgresql://localhost:5432/springdata";
+        String username = "keesun";
+        String password = "pass";
+
+        try(Connection connection = DriverManager.getConnection(url, username, password)) {
+            System.out.println("Connection created: " + connection);
+            String sql = "INSERT INTO ACCOUNT VALUES(1, 'keesun', 'pass');";
+
+            try(PreparedStatement statement = connection.prepareStatement(sql)) {
+                statement.execute();
+            }
+        }
+    }
+}
+
+```
+
+이렇게 JDBC를 활용해서 데이터베이스에 연동을 했을 때 문제가 되는 부분은 무엇이 있을까?
+
+#### 1. 테이블에 있는 데이터를 가져와서 자바 도메인 객체로 바꿔야 하는 작업을 해야한다.
+위의 예시에서는 SELECT 하는 부분이 없었지만. SELECT를 하게되면 보통 ResultSet 이라는 JDBC에서 사용하는 특유의 객체로 반환된다. 해당 객체는 리스트 타입의 객체들을 cursor 라는 요소로 접근해야 한다. 이러한 방식은 조금은 전통적인 방법이 되어버렸고 더 중요하게는 이러한 ResultSet 객체를 Java 표준 Collection 객체로 변환해야 한다. 그렇지 않고 ResultSet 을 그대로 Java 도메인 영역에서도 사용하게 되면 그 프로젝트의 소스는 JDBC 에 의존적인 소스를 작성하게 되는 것이다.
+
+#### 2. 데이터베이스 커넥션을 만드는 작업은 굉장히 비싼 작업이다. (JPA를 사용하면 상대적으로 커넥션을 덜 생성할 수 있다.)
+JDBC를 통해 데이터베이스에 연결을 하는 작업 자체가 굉장히 시간이 오래 걸리는 작업이다. 그렇기 때문에 실무에서는 보통 DBCP 라는 것을 활용해 데이터베이스 연결을 위한 풀을 만들어 둔다. 시간이 오래 걸리는 작업을 매번 새로 만드는 것은 비효율적이기 때문이다. 이 부분은 JPA를 활용하면 데이터베이스 커넥션하는 횟수를 JDBC를 그냥 사용하는 것 보다 덜 생성할 수 있다. (물론 JDBC로도 가능하지만 이를 다 구현해야한다.) 예를 들어 어떤 필드의 값을 100번 업데이트하는 쿼리가 있다고 하자. 근데 100번째의 쿼리가 1번째의 쿼리와 동일한 값을 넣는다면. 사실 1번째 쿼리를 제외하고는 모두 무의미하다. 결국 값이 1번째 쿼리의 값과 같아졌기 때문이다. 이럴때 JDBC를 순수하게 사용한다면 100번의 커넥션 연결 작업을 하지만 JPA는 내부의 상태관리를 통해서 이러한 쿼리들을 검증하고 1번의 쿼리를 날린다.
+
+#### 3. SQL이 어느정도는 표준이지만 DB마다 다르다. 그래서 DB 종류를 바꾸면 쿼리도 바껴야한다.
+이 개념은 JVM과 유사하다. Java가 처음 등장했을 때 강력했던 이유는 운영체제에 종속적이지 않고 프로그래밍이 가능하다는 것이였다. JVM 에서 운영체제에 맞게 코드를 컴파일, 빌딩 해준다. SQL를 바로 사용하는 것은 데이터베이스마다 SQL 문법이 조금씩 다르기 때문에 데이터베이스를 바꾸게되면 SQL 부분을 모두 바꾸어야 하는 이슈가 발생한다. 하지만 JPA에서 사용하는 JPQL은 DB를 바라보고 쿼리를 짜는 것이 아니기 때문에 데이터베이스에 독립적이게 된다.
+
+#### 4. 모든데이터를 가져오는게 아니고 필요한 데이터만을 가져오기가 어렵다.
+한 도메인에 해당하는 데이터들을 쿼리를 날려서 가져왔다고 생각해보자. 이 중에 유독 양이 많은 한 필드가 있어서 쿼리의 속도가 느려진다고 하면, 우리는 성능 향상을 위해 이 필드는 필요할때만 가져오도록 다르게 쿼리를 작성할 것이다. Lazy-Loading의 개념인데 쿼리로는 이러한 것들을 모두 직접 구현해야 하지만 JPA에서는 이미 구현되어 있어서 어노테이션 하나를 붙이면 이러한 방식으로 동작하도록 할 수 있다.
+
+여기에서 나오는 대부분의 단점은 사실 JDBC로도 구현이 가능하다. 왜냐하면 결국 JPA도 JDBC로 구현되어 있기 때문이다. 그러나 위와 같은 단점을 모두 극복한 쿼리, 코드를 작성하는 것은 훨씬 많은 고민을 해야하고, 많은 코드를 작성해야한다. JPA는 이러한 고민과 코드들을 오픈소스화 시켜둔 하나의 라이브러리라고 생각하면 보다 이질감 덜할 것 같다. 필수는 아니지만 권장이다. 여기서는 JDBC를 기준으로 JPA를 사용해야하는 이유를 언급하고 있지만 사실 Mybatis와 비교해도 이와 거의 다르지 않다고 본다.
+
+### ORM 개요
+
+ORM의 기본적인 개념은 애플리케이션의 클래스와 SQL 데이터베이스의 테이블 사이의 매핑 정보를 기술한 메타데이터를 사용하여, 자바 애플리케이션의 객체를 SQL 데이터베이스의 테이블에 자동으로 또 꺠끗하게 영속화 해주는 기술입니다. 보다 쉽게 말하자면 Objct와 Relation을 적절하게 Mapping하는 기술이다. 현존하는 대부분의 웹서비스는 관계형 데이터베이스에서 데이터를 가져오고 이를 자바와 같은 호스트 언어로 비즈니스 로직을 다룬 후 화면으로 전달하게 된다. 여기서 관계형 데이터베이스는 데이터들을 테이블이라고 보통 부르는 Relation 기준으로 생성, 관리하고 호스트 언어에서는 도메인 객체 기준으로 데이터를 생성, 관리한다. 이 둘을 매핑시켜주는 역할을 하는 것이 ORM 이다.
+
+```
+
+ORM : Object Relation Mapping
+Object : 자바에서의 도메인 모델
+Relation : 데이터베이스의 테이블
+
+```
+
+그러면 왜 도메인 모델을 사용해서 데이터베이스 작업을 할 수 있는게 왜 좋을까? 여기서 말하는 도메인은 DTO, DAO 등은 제외하고 순수히 해당 자바 프로젝트가 O.O.P 방식으로 비지니스를 표현하고 구햔히기 위한 POJO 객체를 일컫는다.  
+
+#### 1. 자바에서 비지니스 로직을 구현하려면 결국 SQL로 데이터를 가져와도 결국 자바 객체로 매핑을 해야 한다.
+결국 최종적으로 그것이 도메인이 아니여도 이와 유사한 자바의 객체로 변환을 해야하는 것은 필수적이다.
+
+#### 2. 디자인패턴을 적용하기 수월하다.
+현존하는 대부분 디자인패턴의 가이드는 O.O.P 기반임으로 적용하기가 쉬워진다.
+
+#### 3. 우리의 비지니스 로직에 집중이 가능해진다.
+오직 비지니스 도메인기준으로 기능들을 만들어 낼 수 있음으로 실제 사업에 중요한 비지니스 로직에 보다 더 집중할 수 있다.
+
+이번에는 왜 JPA, 하이버네이트를 사용하게되면 얻게되는 장점을 생각해보자
+
+
+
+하이버네이트를 사용하면 1. 생산성
+도메인 데이터를 왔다갔다하는게 굉장히 쉽다.
+
+2. 유지보수성
+코드가 비지니스만 남고 그렇기때문에 짧아지고 테스트코드 짜기도 쉽고 가독성이 높아진다.
+
+3. 성능
+단건 : JPA 가 SQL 보다 느릴 수 있다.
+이 얘기는 C와 자바 중에 누가 성능이 좋은가 이런 얘기임
+JPA를 잘쓰면 성능을 좋게끔 만들수도 있다는 의미.
+
+JPA는 객체와 DB 사이에 캐시가 있어서 변경사항들을 고려하고 반영해야하는지 아닌지를 결정함. 이 캐싱을 잘 활용하면 성능이 좋아질 수도 있는거임.
+
+4. 벤더 독립성.
+벤더 = 데이터베이스 종류를 말하는듯.
+데이터베이스의 종류에 상관없이 ORM은 동일한 형태로 짤수 있다.
+JVM의 개념과 사실 동일하지 않나 라고 생각.
+
+단점
+
+1. 학습비용
+SQL 도 알아야함. 즉 둘다 알아야 ORM을 잘 쓸수 있음.
+배워야할게 엄청 많나봄. 성능 튜닝까지 하려면 개 많이 알아야 하나보다.
+
+즉 하이버네이트는 배우는데 오래걸리는 프레임 워크 중 하나. 
+어떻게 보면 스프링프레임워크보다도 더 러닝커브가 높다고도 봄.
+
+하이버네이트를 많이 학습하면 할수록 성능이슈를 높일 수 있다.
+
+하이버네이트 밑단에서는 JDBC 에 있다. 즉 그말은 커스터마이징도 가능하다. 하이버네이트로 부족하다면 더 로우하게 학습하고 커스터마이징 하면 성능 올리수 있다.
+
+### ORM: 패러다임 불일치
+
+객체와 릴레이션사이에 매핑을 할떄 서로 잘 맞지 않는 부분.
+
+1. 밀도의 문제
+
+```java
+
+class Account {
+    Long id;
+
+    Address address;
+
+    List<Study> studies; 
+}
+
+class Account {
+    Long id;
+
+    String address;
+
+    List<Study> studies;
+}
+
+```
+
+ 객체는 커스텀한 타입을 만들어내기가 쉽지만 릴레이션은 그렇지 않다. 테이블 타입, 기본 데이터 타입이 전부. 이 두 타입 간의 매칭 불일치 문제. ex)날짜 타입
+
+ 2. 서브타입 (상속)
+
+ 객체는 클래스간의 상속구조를 만들기가 쉽다. 그게 사실 기본인데 릴레이션에는 상속이라는 개념이 없다.
+ 이를 표현하는 표준적인 기술은 없다.
+ 
+ ORM에서 이에대한 대안은 여러가지로 제안해줌.
+
+3. 데이터 네비게이션 문제.
+
+요건 먼소리냥.
+
+4. 관계 문제
+
+```java
+
+public class User {
+    List<Study> myStudy;
+}
+
+public class Study {
+    List<User>
+}
+
+```
+
+위와 같이 객체는 필드를 가지고 어떤 객체를 참조하고 있는지 그 관계를 표현할 수 있다.
+
+또 위처럼 User가 Study를 참조하고 있는 것처럼 그 방향성에 대한 부분도 위 객체 생성시 명시가 가능하다.
+
+또 다대다 관계를 가질 수 있다.
+
+릴레이션은 외래키로 관계를 표현하며 방향성이 사실 없다.
+
+태생적으로 다대다 관계를 만들지 못하면 조인테이블, 링크 테이블을 활용해서 묶어야함.
+
+이런 관계를 표현하는 방법에 미매칭.
+
+Study 테이블에서 User 테이블의 FK 를 가지고 있다고 하자. 두 테이블을 조인하고 이 FK 값을 비교해서 결국 두 테이블의 원하는 방향성으로 데이터를 가져올 수 있따.
+즉 방향성은 양방향임.
+
+릴레이션은 다대다가 없기 때문에 ManyToMany 어노테이션을 사용하면 JPA, 하이버네이트가 내부적으로 이를 조인테이블을 만들어서 작업해줌.
+
+5. 데이터 네비게이션 문제.
+
+객체 내부에서의 네비게이션은 각 객체.필드 형태로 계속 순회가 가능함. 다 돌아다닐 수 있음.
+
+릴레이션은 이렇게 하려면 가능은하지만 한번의 조회가 다 쿼리를 날리는 거기때문에 성능이 안좋다.
+sql은 커넥션 생성 작업이 비싸기때문에 성능을 올리려면 한번의 쿼리로 날리는게 좋다.
+
+그러나 한번의 쿼리로 날린다는 것은 모두 조인한다는 건데. 이 많은 데이터를 한번에 가져오는게 또 좋은것인가.
+모두다 쓰는데이터가 맞는가.
+
+이 둘을 잘 조율 해야하나비ㅏ.
+
+자주접근하는것도 안좋고 많이 접근하는것도 안좋다.
+
+->  lazy loading 을 하자. -> n +1  문제 발생
+
+객체와 릴레이션의 패러다임이 다르기 때문에 이 갭을 채우기위한 노력을 해야함.
+
+
+### JPA 프로그래밍 프로젝트 세팅
+
+의존성 추가
+
+```xml
+
+<?xml version="1.0" encoding="UTF-8"?>
+<project xmlns="http://maven.apache.org/POM/4.0.0" xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance"
+         xsi:schemaLocation="http://maven.apache.org/POM/4.0.0 https://maven.apache.org/xsd/maven-4.0.0.xsd">
+    <modelVersion>4.0.0</modelVersion>
+    <parent>
+        <groupId>org.springframework.boot</groupId>
+        <artifactId>spring-boot-starter-parent</artifactId>
+        <version>2.4.1</version>
+        <relativePath/> <!-- lookup parent from repository -->
+    </parent>
+    <groupId>me.whiteship</groupId>
+    <artifactId>demospringdata</artifactId>
+    <version>0.0.1-SNAPSHOT</version>
+    <name>demospringdata</name>
+    <description>Demo project for Spring Boot</description>
+
+    <properties>
+        <java.version>1.8</java.version>
+    </properties>
+
+    <dependencies>
+        <dependency>
+            <groupId>org.springframework.boot</groupId>
+            <artifactId>spring-boot-starter-data-jpa</artifactId>
+        </dependency>
+        <dependency>
+            <groupId>org.postgresql</groupId>
+            <artifactId>postgresql</artifactId>
+        </dependency>
+
+        <dependency>
+            <groupId>org.springframework.boot</groupId>
+            <artifactId>spring-boot-starter-test</artifactId>
+            <scope>test</scope>
+        </dependency>
+    </dependencies>
+
+    <build>
+        <plugins>
+            <plugin>
+                <groupId>org.springframework.boot</groupId>
+                <artifactId>spring-boot-maven-plugin</artifactId>
+            </plugin>
+        </plugins>
+    </build>
+
+</project>
+
+
+```
+
+EntityManager 가 내부적으로 하이버네이트를 사용함 그래서 JPA, 하이버네이트를 직접 사용할 수는 있지만.
+여기서는 Spring Data JPA를 사용할 것임
+
+application.properties 에 기본설정 application.properties 정보는 HibernameJpaAutoConfiguration 이 자동 설정을 해줌.
+
+```
+
+spring.datasource.url=jdbc:postgresql://localhost:5432/springdata
+spring.datasource.username=keesun
+spring.datasource.password=pass
+
+spring.jpa.hibernate.ddl-auto=create
+spring.jpa.properties.hibername.jdbc.lob.non_contextual_creation=true
+
+spring.jpa.show-sql=true
+spring.jpa.properties.hibernate.format_sql=true
+
+```
+
+spring.jpa.hibernate.ddl-auto=create 이 속성은 개발할 때 유용하며,
+실제 운영 단계에서는 validate 값을 주는 게 좋다. update는 기존 스키마를 유지하고 새로운 것들만 생성한다. update 의 주의사항은 새로운 컬럼을 추가할 때 자동으로 추가해주는게 편하긴 한데 좋은건 아니다. 왜냐면 반대로 기존 컬럼을 지우려고할때 도메인 객체에서는 지웠지만 실제로 릴레이션에서 보면 남아있다. update를 사용하면 스키마가 지저분해질 수 있따. 또 update를 하면 기존 스키마의 이름을 바꾸면 변경이 안되고 그저 기존 것을 남기고 새로운 걸 추가한다.
+
+```java
+
+@Entity
+public class Account {
+    @Id @GeneratedValue
+    private Long id;
+
+    private String username;
+
+    private String password;
+
+    public Long getId() {
+        return id;
+    }
+
+    public void setId(Long id) {
+        this.id = id;
+    }
+
+    public String getUsername() {
+        return username;
+    }
+
+    public void setUsername(String username) {
+        this.username = username;
+    }
+
+    public String getPassword() {
+        return password;
+    }
+
+    public void setPassword(String password) {
+        this.password = password;
+    }
+}
+
+```
+
+@Entity -> 도메인 객체이며 릴레이션과 매핑하겠다라고 선언
+@Id -> PK 항목임을 선언
+@GeneratedValue -> 값을 자동으로 생성해서 사용하겠다라고 선언 (mysql 의 AUTO_INCREMENT 같은)
+username, password 같은 필드들도 위에서 @Entity 선언을 했기때문에 저 이름으로 컬럼이 생성됨 = @Column 이라는 어노테이션이 생략된것임.
+
+```java
+
+import org.springframework.boot.ApplicationArguments;
+import org.springframework.boot.ApplicationRunner;
+import org.springframework.stereotype.Component;
+
+import javax.persistence.EntityManager;
+import javax.persistence.PersistenceContext;
+import javax.transaction.Transactional;
+
+@Component
+@Transactional
+public class JpaRunner implements ApplicationRunner {
+
+    @PersistenceContext
+    EntityManager entityManager;
+
+    @Override
+    public void run(ApplicationArguments args) throws Exception {
+        Account account = new Account();
+        account.setUsername("keesun");
+        account.setPassword("jpa");
+
+        entityManager.persist(account);
+    }
+}
+
+```
+
+EntityManager가 JPA에 가장 핵심 객체 이를 활용하여 영속화가 가능하다. Entity와 관련된 모든 작업들은 한 트랜잭션 안에서 이루어져야함.
+은행 ATM 출금 기능이 예가 될수 있겠다. DB 업무는 트랜잭션 처리가 정말 중요한듯. 여하튼 이를 위해 @Transactional 어노테이션을 붙여준다.
+
+클래스에 @Transactional 를 붙이면 해당 클래스가 가지고 있는 모든 메서드에 적용이 되고 메서트에 적용하면 해당 메서드에만 적용이 된다.
+
+JPA가 HIBERNAME를 사용하기 때문에 실질적으로 둘 다 사용이 가능하다. HIBERNAME의 가장 핵심적인 메서드는 Session 이다 아래는 Hibernate를 활용해서 영속성 관리를 하는 코드이다. entitymanager 하단에 있는 session 객체를 꺼내오고, 그걸로 save 하고있다.
+
+```java
+
+import org.hibernate.Session;
+import org.springframework.boot.ApplicationArguments;
+import org.springframework.boot.ApplicationRunner;
+import org.springframework.stereotype.Component;
+
+import javax.persistence.EntityManager;
+import javax.persistence.PersistenceContext;
+import javax.transaction.Transactional;
+
+@Component
+@Transactional
+public class JpaRunner implements ApplicationRunner {
+
+    @PersistenceContext
+    EntityManager entityManager;
+
+    @Override
+    public void run(ApplicationArguments args) throws Exception {
+        Account account = new Account();
+        account.setUsername("keesun");
+        account.setPassword("hibernate");
+
+        Session session = entityManager.unwrap(Session.class);
+        session.save(account);
+    }
+}
+
+```
+
+### JPA 프로그래밍 2. 엔티티 타입 매핑
+
+어노테이션 방법과 xml 방법 두가지가 있음 그런데 요즘은 거의 어노테이션 방법만 사용.
+
+@Entity 어노테이션 안에는 @Table 어노테이션이 생략 되어있음. @Entity 어노테이션에 이름을 줄수 있따. 안주면 클래스 이름을 기본적으로 사용,
+주면 준 이름을 사용 이게 테이블까지 가지는 않는다 @Entity 어노테이션에 설정한 이름은 객체 세상에서만 사용되어지는 거고 테이블의 이름을 바꾸고 싶으면 @Table 어노테이션을 사용해야한다. @Table 어노테이션의 기본 이름 설정은 @Entity 어노테이션의 이름이기 때문에 테이블의 이름이 바뀌는것이였다.
+
+@Id 는 주키를 설정하는 어노테이션. 문서상에는 모든 타입을 제공한다. 여기서 논쟁거리 하나가 primitive type을 쓸것이냐 혹은 reference type을 쓸것이냐.
 
 ```java
 
@@ -25,71 +510,46 @@ private Long id;
 
 ```
 
-@GeneratedValue 
+장점은 long type은 아무값도 안 넣었을때에 0이다. 근데 이 0이 어떤걸 의미할 수도 있다 (의도하지 않았지만) Long은 null로 들어가기때문에 이에대한 처리가 가능. reference 타입을 쓰는 장점이 이거구나..
 
-어노테이션은 자동 생성된 값을 사용하겠다는 어노테이션이다. 자동 생성 규칙은 각 데이터베이스의 규칙에 따라서 생성이 되며, SEQ를 쓸건지, Identity 객체를 쓸건지..  명시적으로 옵션을 통해 설정할 수 있디. 예를 들면 @GeneratedValue(strategy = GenerationType.SEQUENCE, generator = '') 이런 식이다.
+@GeneratedValue 어노테이션은 자동생성된 값을 사용하겠다는 어노테이션. 기본적으로는 각 데이터베이스의 룰에 맞춰서 생성이됨 SEQ를 쓸건지, Identity 객체를 쓸건지.. 등등 그러나 명시적으로 사용할수 있따. @GeneratedValue(strategy = GenerationType.SEQUENCE, generator = '')  이것 처럼
 
-@Column 
+@Column 컬럼에 사용하는 어노테이션 -> 추가적인 옵션 넣는거가 일반적으로
+@Column(nullable = false, unique = true) 요런식. 
 
-도메인 객체 각 필드에 사용하는 어노테이션이다. 옵션으로 nullable, unique, name 등을 줄수 있다.
+@Temporal 요거는 날짜시간 관련해서 매핑이 가능하다. 3가지 속성이 있다 그떄그떄 맞춰서 쓰자 LocalDate는 자바 1.8 이후에 들온거라서 JPA 2.1 전에는 이 타입에 대한 매핑이 지원이 안된다. Calendar와 Date만 된다. 할수는 있으나 하이버네이트를 커스텀 타입으로 쓰는 고급 기술을 써야한다고 함.
 
-@Temporal 
+@Transient 어노테이션을 사용하면 이 필드는 컬럼으로 매핑을 안하겟다는 의미이다.
 
-날짜와 시간에 관련된 필드에 매핑이 가능하다. 3가지 속성이 있으며 상황에 맞춰서 쓰면 된다. LocalDate는 자바 1.8 이후에 생겨난 객체이기 떄문에 JPA 2.1 이전 버전에는 이 타입에 대한 매핑이 지원이 안된다. 따라서 Calendar와 Date 객체를 사용해야 한다. 그렇기 떄문에 LocalDate 객체를 사용해야 한다면 JPA 2.1 이상 버전을 추천한다.
+spring.jpa.show-sql=true -> JPA가 자동으로 처리하는 쿼리 내용들을 보여달라는 설정
+spring.jpa.properties.hibernate.format_sql=true -> 저 쿼리 내용들을 보기 쉽게 보여달라는 설정 (단순히 beautify 기능)
 
-@Transient 
+### JPA 프로그래밍 3. Value 타입 매핑
 
-이 어노테이션을 사용하면 사용된 필드는 릴레이션의 컬럼으로 매핑을 하지 안겠다는 의미이다. 이 용어는 JPA에서 관리하는 엔티티 상태 4가지 중 하나와 동일하다.
+Value 타입은 필드를 이야기하는 것 같음. 엔티티 타입은 클래스이고. 여기서는 Reference 타입의 Value에 대한 매핑 하는 방법을 알려주려는 것 같다.
+대표적인 예로 Address 필드.
 
-### Value 타입 매핑
+엔티티로써 사용할만큼 큰 커스텀 클래스라면 @Entity 어노테이션을 써서 기존처럼 새로운 릴레이션을 만들면 된다. 그러나 지금처럼 Address의 경우 그정도의 사이즈는 아니고 단순하게 값을 묶어서 가지고있는 정도이기 때문에 이녀석을 @Embeddable, @Embedded 어노테이션을 활용하면 객체에서는 묶여있지만 릴레이션에서는 모두 포함된 구조로 구현이 가능하다.
 
-만약 필드에 기본 타입이 아니고 객체타입을 사용하고 싶은 경우에는 @Embeddable, @Embedded 어노테이션을 활용해야 한다.
-예를 들어 주소 관련 정보를 가지고 있는 엔티티를 만든다고 하자. 이 주소 정보는 도로명을 가지고 있는 street 필드, 도시명을 가지고 있는 city 필드, 주명을 가지고 있는 state, 우편번호를 가지고 있는 zipCode 이렇게 4개가 필요하다.
-이 정보들을 한 엔티티에 바로 추가할 수 있지만. 관련된 필드들을 묶고싶어서 Address라는 객체를 만들고 이 객체 타입으로 필드에 넣었다.
-
-이렇게하면 실제 엔티티에는 이 4개의 필드 정보가 직접적으로 생성된다. 객체관점에서는 구분되어있지만 릴레이션 관점에서는 구분되어있지 않는다는 것이다.
-
-엔티티로서 사용해야할 만큼 큰 객체라면 @Entity 어노테이션을 써서 기존처럼 새로운 릴레이션을 만들면 된다. 그러나 지금처럼 Address의 경우 그정도의 사이즈는 아니고 단순하게 값을 묶어서 가지고 있는 정도이기 때문에 이 녀석을 @Embeddable, @Embedded 어노테이션을 활용하면 객체에서는 묶여있지만 릴레이션에서는 모두 포함된 구조로 구현이 가능하다.
-
+이런 타입은 @Embeddable 을 활용해서 만들고, 넣으려고하는 엔티티 객체에 @Embedded 어노테이션과 함꼐 제공하여야 한다.
 ```java
 
-@Getter
-@Setter
 @Embeddable
 public class Address {
     private String street;
-
     private String city;
-
     private String state;
-
     private String zipCode;
-}
-
-@Getter
-@Setter
-@Entity
-public class Account {
-    @Id @GeneratedValue
-    private Long id;
-
-    private String username;
-
-    private String password;
-
-    @Embedded
-    private Address address;
 }
 
 ```
 
-같은 Embeddable 객체를 한 엔티티 내에 여러번 사용할 경우에는 @AttributeOverrides, @AttributeOverride 어노테이션을 활용해 이름을 변경할 수 있다. 예를 들면 집주소, 직장주소 등이 있다.
+같은 Embeddable 객체를 한 엔티티 내에 여러번 사용할 경우에는 @AttributeOverrides, @AttributeOverride 어노테이션을 활용해 이름을 오버라이딩할 수 있따.
 
 ### JPA 프로그래밍 4. 관계 매핑
 
-엔티티끼리의 관계가 있을 때 릴레이션에게 이 관계를 설명하기 위한 메타데이터를 설정해야 한다. 관계가 있다는 것은 객체관점에서는 의존성을 가지고 있다는 것이고 릴레이션관점에서는 한쪽 방향에서는 FK를 가지고 있다는 의미이다.
-
-1:N 관계에 대한 매핑을 하기 위해서는 @OneToMany 어노테이션을 사용해야한다. 내 객체를 여러 명이 참조가 가능하다. 이렇게 하면 실제 릴레이션에는 Account 릴레이션의 PK를 참조하는 FK 값을 Study 릴레이션에 생성해준다. 이 관계에서 방향성은 Study가 Account를 의존하고 있기때문에 참조하고있기때문에 현재 Study가 주인인 객체이다.
+1:N 관계 매핑 합시다! 두 개의 엔티티가 서로 맞물려야 할때 이 관계 매핑을 해야한다. 내 객체를 여러 명이 참조가 가능하다. 
+이렇게 하면 실제 릴레이션에는 Account 릴레이션의 PK를 참조하는 FK 값을 Study 릴레이션에 생성해준다. 이 관계에서 방향성은 Study가 Account를 의존하고 있기때문에 참조하고있기때문에 현재 Study가 주인인 객체이다.
 
 ```java
 
@@ -98,8 +558,6 @@ import javax.persistence.GeneratedValue;
 import javax.persistence.Id;
 import javax.persistence.ManyToOne;
 
-@Getter
-@Setter
 @Entity
 public class Study {
     @Id @GeneratedValue
@@ -109,6 +567,30 @@ public class Study {
 
     @ManyToOne
     private Account ownwer;
+
+    public Long getId() {
+        return id;
+    }
+
+    public void setId(Long id) {
+        this.id = id;
+    }
+
+    public String getName() {
+        return name;
+    }
+
+    public void setName(String name) {
+        this.name = name;
+    }
+
+    public Account getOwnwer() {
+        return ownwer;
+    }
+
+    public void setOwnwer(Account ownwer) {
+        this.ownwer = ownwer;
+    }
 }
 
 ```
@@ -1683,7 +2165,7 @@ public class Account {
 
 ```
 
-```java
+```javad
 
 import org.springframework.data.jpa.repository.JpaRepository;
 import org.springframework.data.querydsl.QuerydslPredicateExecutor;
