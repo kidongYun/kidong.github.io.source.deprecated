@@ -150,3 +150,17 @@ Issue issue = jiraClient.getIssue("AIRDEV-176");
             issue.addWatcher(jiraClient.getSelf());
             issue.addWatcher("N10135");
 ```
+
+#### Custom Field Select Box
+
+```java
+
+            List<CustomFieldOption> cfselect = Field.getResourceArray(
+                    CustomFieldOption.class,
+                    issue.getField("customfield_11928"),
+                    jira.getRestClient()
+            );
+
+            for (CustomFieldOption cfo : cfselect)
+                log.info("Custom Field Select: " + cfo.getValue());
+```
