@@ -468,4 +468,84 @@ The bean 'holoman', defined in class path resource [me/whiteship/HolomanConfigur
 
 ### 자동 설정 만들기 2부: @ConfigurationProperties
 
+@ConditionalOnMissingBean -> 이 타입의 빈이 없을 때만 자동설정 해라. 위에서 본것처럼 자동설정으로 빈을 등록하고, 또 실제 프로젝트에서 빈을 등록하게 되면 오류가 반환된다.
+ 실제 프로젝트에서 빈을 등록하고 싶다면 이 어노테이션을 붙여서 실제 프로젝트에서 빈 등록을 안할 때에만 자동 설정이 되도록 할 수 있다.
+
+ 스프링 부트가 여러가지 설정들을 커스터마이징 할수 있도록 하는 기능들 중 하나이다.
+
+ 위에서 한 방법은 빈 자체를 새롭게 등록했다. 그런데 만약 빈의 사이즈가 커서 빈 자체를 새롭게 등록하는 것이 아니고 빈의 일부 데이터만 변경하고 싶을때에는 Properties를 활용해서 값을 넘겨준다. 빈 자체는 자동설정에서 만들고 빈을 만들 때 필요한 Properties 값을 메인 프로젝트에서 가져온다.
+
+ConfigurationProperties 어노테이션을 사용하기 위해서는 의존성을 추가해줘야 한다.
+
+```xml
+        <dependency>
+            <groupId>org.springframework.boot</groupId>
+            <artifactId>spring-boot-configuration-processor</artifactId>
+            <optional>true</optional>
+        </dependency>
+```
+
+아래는 Properties 구조에 맞는 POJO 객체이다
+
+```java
+
+ import org.springframework.boot.context.properties.ConfigurationProperties;
+
+@ConfigurationProperties("holoman")
+public class HolomanProperties {
+    private String name;
+
+    private int howLong;
+
+    public String getName() {
+        return name;
+    }
+
+    public void setName(String name) {
+        this.name = name;
+    }
+
+    public int getHowLong() {
+        return howLong;
+    }
+
+    public void setHowLong(int howLong) {
+        this.howLong = howLong;
+    }
+}
+
+```
+
+@EnableConfigurationProperties 어노테이션을 적용해야 동작한다. 하나 더 달라진 점은 Bean 등록시 holoman 함수에서 파라미터를 받고 있는데 저 값을 메인 프로젝트의 spring.properties 에서 가져올 것이다.
+
+```java
+
+import org.springframework.boot.autoconfigure.condition.ConditionalOnMissingBean;
+import org.springframework.boot.context.properties.EnableConfigurationProperties;
+import org.springframework.context.annotation.Bean;
+import org.springframework.context.annotation.Configuration;
+
+@Configuration
+@EnableConfigurationProperties(HolomanProperties.class)
+public class HolomanConfiguration {
+
+    @Bean
+    @ConditionalOnMissingBean
+    public Holoman holoman(HolomanProperties properties) {
+        Holoman holoman = new Holoman();
+        holoman.setHowLong(properties.getHowLong());
+        holoman.setName(properties.getName());
+        return holoman;
+    }
+}
+
+```
+
+메인 프로젝트의 application.properties 에 아래처럼 설정해준다.
+```
+holoman.name = keesun
+holoman.how-long = 6
+```
+
+### 내장 웹서버 이해
 
