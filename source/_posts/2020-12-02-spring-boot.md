@@ -549,3 +549,101 @@ holoman.how-long = 6
 
 ### 내장 웹서버 이해
 
+스프링 부트는 서버가 아니다. 스프링 프레임워크를 쉽게 사용할 수 있도록 하는 툴이지 특히나 웹서버가 아니다. 스프링부트가 제공하는 자동설정을 활용하지 않고 내장 톰캣을 사용하는 방법
+
+```java
+
+public class Application {
+    public static void main(String[] args) throws LifecycleException {
+        Tomcat tomcat = new Tomcat();
+        tomcat.setPort(8080);
+
+        Context context = tomcat.addContext("/", "/");
+
+        HttpServlet servlet = new HttpServlet() {
+            @Override
+            protected void doGet(HttpServletRequest req, HttpServletResponse resp) throws ServletException, IOException {
+                PrintWriter writer = resp.getWriter();
+                writer.println("<html><head><title>");
+                writer.println("Hey, Tomcat");
+                writer.println("</title></head>");
+                writer.println("<body><h1>Hello Tomcat</h1></body");
+                writer.println("</html");
+            }
+        };
+
+        String servletName = "helloServlet";
+        tomcat.addServlet("/", servletName, servlet);
+        context.addServletMappingDecoded("/hello", servletName);
+
+        tomcat.getConnector();
+        tomcat.start();
+    }
+}
+
+```
+
+톰캣을 먼저 띄우고, 서블릿을 만들고 이 서블릿을 톰캣에 할당하고 /hello 경로로 들어올 때 이 서블릿으로 들어가도록 매핑
+
+스프링 부트의 자동설정을 활용해 위와 같은 톰캣 설정을 구현한다.
+
+웹서버의 경우 spring-boot-autoconfigure 프로젝트에 ServletWebServerfactoryAutoConfiguration 객체를 참조해 자동설정이 구현된다 내부를 보면 톰캣, 제티, 네티, 언더토우 등등 존재한다. 여기서 Import 하는 부분에 EmbeddedTomcat을 들어가보면 TomcatServletWebServerFactory 이객체가 있는데 여기서 위 예시처럼 톰캣을 구현하고 있다.
+TomcatServletWebServerFactoryCustomizer 여기세어 커스터마이징도 가능하다.
+
+DispatcherServletAutoConfiguration -> 
+Spring에서는 DispatcherServlet이 서블릿 개념으로 돈다. 이 녀석은 스프링에서 HttpServlet을 상속받아 만든 놈 스프링 MVC의 핵심 클래스. 여기에서 자동설정을 한다.
+
+Servlet 컨테이너들은 바뀔수 있지만 Servlet은 변하지 않는다. 다시 말하자면 톰캣 위에 띄울수 있고, 언더토우 위에 띄울 수 있고 이런말.
+
+### 내장 서블릿 컨테이너 응용 1부 : 컨테이너와 서버 포트
+
+Spring boot의 기본 설정은 tomcat. 자동설정에서 그렇게 만듬.
+
+다른 서블린 컨테이너로 변경하기 위해서는
+
+1. spring-boot-starter-web 여기 의존성에서 기본적으로 tomcat을 가져옴 이걸 빼야함.
+
+```xml
+
+        <dependency>
+            <groupId>org.springframework.boot</groupId>
+            <artifactId>spring-boot-starter-web</artifactId>
+            <exclusions>
+                <exclusion>
+                    <groupId>org.springframework.boot</groupId>
+                    <artifactId>spring-boot-starter-tomcat</artifactId>
+                </exclusion>
+            </exclusions>
+        </dependency>
+```
+
+2. 다른 서블릿 컨테이너의 의존성을 추가
+
+```xml
+
+        <dependency>
+            <groupId>org.springframework.boot</groupId>
+            <artifactId>spring-boot-starter-jetty</artifactId>
+        </dependency>
+```
+
+application.properies 여기에 아래 코드를 넣으면 서버가 웹서버로 뜨지 않는다.
+
+spring.main.web-application-type=none
+
+서버포트 변경하려면 application.properties 여기에 아래 코드 입력
+server.port=7070
+
+아래 방법으로 포트 번호를 알수 있다. 웹서블릿이 생성될때 아래 리스너가 실행되고 여기서 값을 얻어온다.
+```java
+
+@Component
+public class PortListener implements ApplicationListener<ServletWebServerInitializedEvent> {
+    @Override
+    public void onApplicationEvent(ServletWebServerInitializedEvent servletWebServerInitializedEvent) {
+        ServletWebServerApplicationContext applicationContext = servletWebServerInitializedEvent.getApplicationContext();
+        System.out.println(applicationContext.getWebServer().getPort());
+    }
+}
+
+```
