@@ -647,3 +647,81 @@ public class PortListener implements ApplicationListener<ServletWebServerInitial
 }
 
 ```
+
+### 내장 서블릿 컨테이너에 HTTPS, HTTP2 적용하기
+
+HTTPS 를 사용하려면 먼저 인증서 작업을 해야함 키를 만들어야함 keytool 명령어를 활용해 인증서를 만든다. jdk/bin 폴더에가면 keytool.exe 프로그램이 있다. 이를 실행
+
+```
+keytool -genkey -alias spring -storetype PKCS12 -keyalg RSA -keysize 2048 -keystore keystore.p12 -validity 4000
+```
+
+생성된 키를 프로젝트의 루트에 두는 경우
+
+```
+server.ssl.key-store= keystore.p12
+```
+
+이렇게 application.properties 에 설정해주시고, resources 폴더에 넣고싶다면 넣고
+
+```
+server.ssl.key-store= classpath:keystore.p12
+```
+
+해주면 된다.
+
+HTTPS 를 적용하면 HTTP로 받을 수없다 커넥터가 한개고 이거를 HTTPS가 덮어씌웠기 때문. 아래처럼 커넥터를 새로 만들어서 적용하면 두 프로토콜을 모두 쓸 수 있다.
+
+
+```java
+
+@SpringBootApplication
+@RestController
+public class Springbootdemo4Application {
+
+    @GetMapping("/hello")
+    public String hello() {
+        return "Hello Spring";
+    }
+
+    public static void main(String[] args) {
+        SpringApplication.run(Springbootdemo4Application.class, args);
+    }
+
+    @Bean
+    public ServletWebServerFactory serverFactory() {
+        TomcatServletWebServerFactory tomcat = new TomcatServletWebServerFactory();
+        tomcat.addAdditionalTomcatConnectors(createStandardConnector());
+        return tomcat;
+    }
+
+    private Connector createStandardConnector() {
+        Connector connector = new Connector("org.apache.coyote.http11.Http11NioProtocol");
+        connector.setPort(8080);
+        return connector;
+    }
+}
+
+```
+
+```
+server.ssl.key-store= keystore.p12
+server.ssl.key-store-type= PKCS12
+server.ssl.key-store-password=123456
+server.ssl.key-alias=spring
+server.port=8443
+```
+
+HTTP2 쓰기
+
+ 
+### 독립적으로 실행 가능한 JAR (Spring-boot-maven-plugin)
+
+mvn clean package를 실행 하면 실행 가능한 JAR 파일 하나가 생성됨.
+이안에 의존성 jar 파일들이 모두 들어있음.
+
+스프링 부트는 내장 JAR로 해서 JAR안에 JAR로 묶어둔다.
+
+target.app.BOOT-INF.lib 여기에 의존성들이 들어간다.
+
+JarLauncher 이 파일이 SpringBoot 어플리케이션을 기본적으로 실행한다.
