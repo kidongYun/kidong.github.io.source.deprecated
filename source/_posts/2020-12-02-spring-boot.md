@@ -717,7 +717,7 @@ HTTP2 쓰기
  
 ### 독립적으로 실행 가능한 JAR (Spring-boot-maven-plugin)
 
-mvn clean package를 실행 하면 실행 가능한 JAR 파일 하나가 생성됨.
+mvn clean package를 실행 하면 모든 의존성을 가지고 있는 실행 가능한 JAR 파일 하나가 생성됨.
 이안에 의존성 jar 파일들이 모두 들어있음.
 
 스프링 부트는 내장 JAR로 해서 JAR안에 JAR로 묶어둔다.
@@ -725,3 +725,92 @@ mvn clean package를 실행 하면 실행 가능한 JAR 파일 하나가 생성�
 target.app.BOOT-INF.lib 여기에 의존성들이 들어간다.
 
 JarLauncher 이 파일이 SpringBoot 어플리케이션을 기본적으로 실행한다.
+
+
+### SpringApplication 객체의 기능
+
+1. Edit configuration 에서 jvm option에 -Ddebug 옵션을 주거나 program argument 에 --debug 옵션을 주면 어플리케이션을 디버그 모드로 실행할 수 있다.
+
+2. 이 객체에서 banner를 조작가능.
+
+3. ApplicationEvent.
+    스프링 생명주기 같은거 같다.
+
+    이벤트 처리를 할때 중요한점은 어플리케이션 컨텍스트가 발생하기 이전에 발생하는 이벤트들은 빈이 없기때문에 빈주입하더라도 리스너 동작하지 않는다.
+    빈이 없기 때문이다.
+
+```java
+
+@Component
+public class SampleListener implements ApplicationListener<ApplicationStartingEvent> {
+    @Override
+    public void onApplicationEvent(ApplicationStartingEvent applicationStartingEvent) {
+        System.out.println("Application is starting");
+    }
+}
+
+```
+
+그래서 위와같이 applicationContext가 생성되지 않는 라이프 사이클에 이벤트 처리를 하고 싶으면 직접 객체 생성을 해줘야 한다.
+
+```java
+
+    public static void main(String[] args) {
+        SpringApplication app = new SpringApplication(Springbootdemo4Application.class);
+        app.addListeners(new SampleListener());
+        app.run(args);
+    }
+```
+
+아래 케이스는 applicationContext가 생성되고 난 뒤의 이벤트이기 때문에 정상 실행이 되야 한다.
+
+```java
+
+@Component
+public class SampleListener implements ApplicationListener<ApplicationStartedEvent> {
+    @Override
+    public void onApplicationEvent(ApplicationStartedEvent applicationStartedEvent) {
+        System.out.println("Started");
+    }
+}
+
+```
+
+### WebApplicationType
+
+Spring MVC, SPRING WebFlux 둘을 구분하기 위함 둘 다 구현되어 있다면 기본적으로 MVC를 선택한다. 만약 이 상황에서 WebFlux 를 적용하고 싶다면
+
+```java
+
+   public static void main(String[] args) {
+        SpringApplication app = new SpringApplication(Springbootdemo4Application.class);
+        app.setWebApplicationType(WebApplicationType.REACTIVE);
+        app.run(args);
+    }
+
+```
+
+이렇게 적용하면 된다. WebApplicationType.SERVLET 가 MVC 를 실행하는 설정.
+
+-D 로들어오는 것은 jvm option, -- 로 들어오는것은 application arguments.
+
+```java
+
+public Contructor(ApplicationArguments arguments) {
+    System.out.println("foo: " + arguments.containsOption("foo"));
+    System.out.println("bar: " + arguments.containsOption("bar"));
+}
+
+```
+
+ApplicationArguments 객체로 Program Arguments를 받을 수 있다 (-- 옵션으로 들어오는 값들)
+
+애플리케이션 아규먼트 사용하기
+    - ApplicationArguments를 빈으로 등록해 주니까 가져다 쓰면 된다.
+
+애플리케이션 실행한 뒤 뭔가 실행하고 싶을 때
+    - ApplicationRunner (추천) 또는 CommandLineRunner
+    - 순서 지정 가능 @Order
+
+ApplicationRunner, CommandRunner 둘다 jvm options 은 못받음, program arguments 만 받음
+
