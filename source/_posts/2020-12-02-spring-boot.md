@@ -814,3 +814,135 @@ ApplicationArguments 객체로 Program Arguments를 받을 수 있다 (-- 옵션
 
 ApplicationRunner, CommandRunner 둘다 jvm options 은 못받음, program arguments 만 받음
 
+
+# 외부설정
+
+application.properties 이런 파일들을 말함. 이런데서 설정한 값들을 외부 설정값이라고 생각하면된다 스프링부트가 이런 값들을 참고한다.
+
+application.properties
+```
+keesun.name = keesun
+```
+
+```java
+
+@Component
+public class SampleRunner implements ApplicationRunner {
+
+    @Value("${keesun.name}")
+    private String name;
+
+    @Override
+    public void run(ApplicationArguments args) throws Exception {
+        System.out.println("=========================");
+        System.out.println(name);
+        System.out.println("=========================");
+    }
+}
+
+```
+
+name 필드에 application.properties 안에 있는 값을 주입한다.
+
+우선순위
+
+커맨드라인 argument로 주는게 application.properties 보다 높다. 이방법으로 주면 덮어씌워진다. 테스트해보려면 mvn clean package 해서 jar로 패키징하고 
+해당 jar 파일을 java -jar ... 로 실행할때 --keesun.name=whiteship 이런식으로 준다.
+
+@SpringBootTest 어노테이션에 properties 속성으로 외부설정 값을 주눈게 커맨드라인보다 더 높다.
+
+이런 외부값들을 가져오는 다른방법 Environment 객체 활용
+
+```java
+@Component
+public class SampleRunner implements ApplicationRunner {
+
+    @Value("${keesun.name}")
+    private String name;
+
+    @Autowired
+    Environment environment;
+
+    @Override
+    public void run(ApplicationArguments args) throws Exception {
+        System.out.println("=========================");
+        System.out.println(environment.getProperty("keesun.name"));
+        System.out.println("=========================");
+    }
+}
+
+```
+
+테스트용 외부 설정이 따로 필요할때는 application.properties 이파일을 테스트쪽 같은 패키지에 동일하게 생성한다.
+그러면 테스트 외부설정의 값을 사용한다. 
+
+서버포트에 랜덤값을 주고싶을때에는 application.properties 에서 ${random.int} 이걸 사용하면 안되고 단순히 0 값을 줘야한다.
+0은 가용한 범위내애서 포트번호를 주지만 ${random.int} 이 값은 무작위로 값을 주기때문. -가 나올수도 있고, 루트권한이 필요한 포트일수도 있고..
+
+위 방법의 단점은 테스트용 application.properties 값들의 존재여부가, 리얼 application.properties 와다르다면, 주입시 실패할 수도 있다는점 참고해야한다.
+
+이 문제를 해결하기 위해서는 src 쪽의 application.properties 와는 다른 이름을 가진 properties 파일을 테스트 패키지 쪽에 넣고, 이를 테스트 클래스에서 추가해주면 된다.
+
+외부설정 값들을 하나의 빈으로도 받을 수 있다.
+
+```
+keesun.name = keesun
+keesun.age = ${random.int(100)}
+keesun.fullnName = ${keesun.name} Baik
+```
+
+```java
+
+@Component
+@ConfigurationProperties("keesun")
+public class KeesunProperties {
+    private String name;
+    private int age;
+    private String fullName;
+
+    public String getName() {
+        return name;
+    }
+
+    public void setName(String name) {
+        this.name = name;
+    }
+
+    public int getAge() {
+        return age;
+    }
+
+    public void setAge(int age) {
+        this.age = age;
+    }
+
+    public String getFullName() {
+        return fullName;
+    }
+
+    public void setFullName(String fullName) {
+        this.fullName = fullName;
+    }
+}
+
+```
+
+```java
+
+@Component
+public class SampleRunner implements ApplicationRunner {
+
+    @Autowired
+    KeesunProperties keesunProperties;
+
+    @Override
+    public void run(ApplicationArguments args) throws Exception {
+        System.out.println("=========================");
+        System.out.println(keesunProperties.getName());
+        System.out.println(keesunProperties.getAge());
+        System.out.println("=========================");
+    }
+}
+
+
+```
