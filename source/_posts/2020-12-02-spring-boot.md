@@ -946,3 +946,89 @@ public class SampleRunner implements ApplicationRunner {
 
 
 ```
+
+### 프로파일
+
+특정한 프로파일에서만 특정한 빈을 등록하고 싶다. 이런 케이스에서 사용함 빈생성을 특정 상황(스테이징인지, 로컬인지, 운영인지) 에 맞게 할수 있음
+
+```java
+@Profile("prod")
+@Configuration
+public class BaseConfiguration {
+
+    @Bean
+    public String hello() {
+        return "hello";
+    }
+}
+```
+
+```java
+@Profile("test")
+@Configuration
+public class TestConfiguration {
+    @Bean
+    public String hello() {
+        return "test";
+    }
+}
+```
+
+```
+// application.properties
+spring.profiles.active=test
+```
+
+혹은 커맨드라인 아규먼트로 위 값을 제공해도 된다. 이방법이 실제적으로 더 많이 쓰일듯. 왜냐하면 어느 환경에서 프로젝트가 실행하는지는 외부에서 설정값을 가져와야 하기 떄문에.
+
+### 스프링부트 로깅
+
+로깅 퍼사드 vs 로깅
+
+로거 API 들을 추상화 해놓은 인터페이스들 
+주로 프레임워크들은 로깅 퍼사드들을 활용해서 개발.
+로깅퍼사드를 안써도되는데 장점은 로거들을 바꿔낄수 있다.
+로깅퍼사드 -> 그냥 로거들의 추상화된 객체인가보네. 구현체를 바꿔낄수 있게 하려고.
+
+프레임워크에서는 로깅퍼사드를 쓰는 이유는 어플리케이션 개발자가 쓰는 로거가 여러개 이기 때문에 이를 모두 수용하려고 추상체를 사용. 인터페이스의 사용 개념과 동일.
+
+Commons Logging -> 스프링에서 기본적으로 제공하지만 지금은 안쓰는 추세, 뭔가 불안정했던게 많아다고함.
+
+최종적으로 Logback을 쓰는거임. 이게 구현체인가보다. 로거 Slf4j, commons logging 이것들은 로깅 퍼사드.
+
+로깅한 내용을 파일로 떨구고싶으면 application.properties 여기에 logging.path=logs 이런식으로 디렉토리, 파일을 설정해주면 된다.
+
+```
+logging.path=logs
+```
+
+로깅 레벨도 패키지마다 설정가능.
+
+```
+logging.level.[패키지경로]=DEBUG
+```
+
+```
+logging.file.path=logs
+logging.level.com.example.springdemo=DEBUG
+```
+
+```java
+@Component
+public class SampleRunner implements ApplicationRunner {
+
+    private Logger logger = LoggerFactory.getLogger(SampleRunner.class);
+
+    @Autowired
+    private String hello;
+
+    @Override
+    public void run(ApplicationArguments args) throws Exception {
+        logger.info("==============================");
+        logger.info(hello);
+        logger.info("==============================");
+    }
+}
+```
+
+### 로깅 커스텀하기
