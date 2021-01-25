@@ -947,32 +947,6 @@ public class SampleRunner implements ApplicationRunner {
 
 ```
 
-<<<<<<< HEAD
-
-### 테스트
-
-@AutoConfigureMockMvc 이걸 넣어주면 mockMvc 객체를 빈 주입 받을 수 있다.
-
-@SpringBootTest(webEnvironment = SpringBootTest.WebEnvironment.MOCK) -> 서블릿을 모킹해서 가짜로 올린다.
-MockMvc를 활용해서 테스트할 수있다.
-
-```java
-
-@RunWith(SpringRunner.class)
-@SpringBootTest(webEnvironment = SpringBootTest.WebEnvironment.MOCK)
-@AutoConfigureMockMvc
-public class SampleControllerTest {
-
-    @Autowired
-    MockMvc mockMvc;
-
-    @Test
-    public void hello() throws Exception {
-        mockMvc.perform(get("/hello"))
-                .andExpect(status().isOk())
-                .andExpect(content().string("hello keesun"))
-                .andDo(print());
-=======
 ### 프로파일
 
 특정한 프로파일에서만 특정한 빈을 등록하고 싶다. 이런 케이스에서 사용함 빈생성을 특정 상황(스테이징인지, 로컬인지, 운영인지) 에 맞게 할수 있음
@@ -985,159 +959,10 @@ public class BaseConfiguration {
     @Bean
     public String hello() {
         return "hello";
->>>>>>> 857e7ea5ef66c41306d8dd26df48488a8b0a12b3
     }
 }
 ```
 
-<<<<<<< HEAD
-@SpringBootTest(webEnvironment = SpringBootTest.WebEnvironment.RANDOM_PORT) -> 실제로 뜬다
-실제로 뜨기 때문에 실제로 사용하는 RestTemplate 등을 사용해야한다. 테스트 목적으로 내장 서블릿이 실제로 뜬다 랜덤 포트로.
-
-```java
-
-@RunWith(SpringRunner.class)
-@SpringBootTest(webEnvironment = SpringBootTest.WebEnvironment.RANDOM_PORT)
-public class SampleControllerTest {
-    
-    @Autowired
-    TestRestTemplate testRestTemplate;
-
-    @Test
-    public void hello() throws Exception {
-        String result = testRestTemplate.getForObject("/hello", String.class);
-        assertThat(result).isEqualTo("hello keesun");
-    }
-}
-
-```
-
-위와 동일한 테스트 방법이나 이것은 실제로 서블릿을 띄운다는게 다르다. 만약 컨트롤러가 가진 의존성을 없애고 싶다면, 컨트롤러만 오로지 테스트하고 싶다면. 의존성 제거를 위해서
-Mocking된 컨트롤러 객체를 생성해야 하는데 아래처럼 @MockBean 어노테이션을 사용하면 가짜 객체르 sampleController 에 대체하여 주입한다.
-
-```java
-
-@RunWith(SpringRunner.class)
-@SpringBootTest(webEnvironment = SpringBootTest.WebEnvironment.RANDOM_PORT)
-public class SampleControllerTest {
-
-    @Autowired
-    TestRestTemplate testRestTemplate;
-    
-    @MockBean
-    SampleController mockSampleController;
-
-    @Test
-    public void hello() throws Exception {
-        String result = testRestTemplate.getForObject("/hello", String.class);
-        assertThat(result).isEqualTo("hello keesun");
-    }
-}
-
-```
-
-WebClient 는 비동기 하게 동작을 한다. RestTemplate 말고 이거를 사용해보자. 이걸 사용하려면 WebFlux 의존성이 있어야 사용이 가능하다. 
-
-```xml
-        <dependency>
-            <groupId>org.springframework.boot</groupId>
-            <artifactId>spring-boot-starter-webflux</artifactId>
-        </dependency>
-```
-
-```java
-@RunWith(SpringRunner.class)
-@SpringBootTest(webEnvironment = SpringBootTest.WebEnvironment.RANDOM_PORT)
-public class SampleControllerTest {
-
-    @Autowired
-    WebTestClient webTestClient;
-
-    @MockBean
-    SampleService mockSampleService;
-
-    @Test
-    public void hello() throws Exception {
-        when(mockSampleService.getName()).thenReturn("whiteship");
-
-        webTestClient.get().uri("/hello").exchange()
-                .expectStatus().isOk()
-                .expectBody(String.class).isEqualTo("hello whiteship");
-    }
-}
-```
-
-WebClient 가 비동기적으로 동작하기 때문에 이걸 쓰는것을 권장하신다. api 자체도 뭔가 사용하기 쉽게끔 구현이 되어있다고 하심. 내꺼에도 이걸로 바꿔서 테스트코드 작성해보자.
-
-@SpringBootTest 어노테이션의 역할은 @SpringBootApplication 여기에 관련되어있는 빈들을 모두 주입시켜준다. 그리고 @MockBean 이 선언된 객체들은 가짜 객체로 대체 주입한다.
-이렇게 많은 빈들이 주입되는게 무거워져서 싫다면 레이어마다 짤라서 슬라이스 테스트가 가능하다.
-
-#### JsonTest
-
-Domain 객체가 json으로 변경되었을때 적절하게 변환이 되는지를 확인하기 위한 테스트
-
-### WebMvcTest
-
-이 어노테이션이 @AutoConfigureMockMvc 어노테이션을 가지고 있음. 따로 선언 안해도된다.
-이 어노테이션은 슬라이스 용이라 컨트롤러만 빈 주입이 되고, @Component, @Service, @Repository 형태의 빈들은 되지 않는다.
-필요하다면 @MockBean 을 활용해서 빈을 채워줘야 한다.
-WebMvcTest 어노테이션은 MockMvc 만 사용 가능하다.
-
-```java
-
-@RunWith(SpringRunner.class)
-@WebMvcTest(SampleController.class)
-public class SampleControllerTest {
-
-    @MockBean
-    SampleService mockSampleService;
-
-    @Autowired
-    MockMvc mockMvc;
-
-    @Test
-    public void hello() throws Exception {
-        when(mockSampleService.getName()).thenReturn("whiteship");
-
-        mockMvc.perform(get("/hello"))
-                .andExpect(content().string("hello whiteship"));
-    }
-}
-
-```
-
-@SpringBootTest 이거슨 위에서 언급했다시피 @SpringBootApplication 관여되는 모든 빈들을 등록하기 때문에 통합테스트 목적으로 사용한다.
-
-### OutputCapture
-
-로그나, System.out.println 을 찍은 출력들을 모두 캡쳐해서 가지고있는 객체이다. 이 객체를 활용해서 테스트도 가능하다.
-
-```java
-@RunWith(SpringRunner.class)
-@WebMvcTest(SampleController.class)
-public class SampleControllerTest {
-
-    @Rule
-    public OutputCapture outputCapture = new OutputCapture();
-
-    @MockBean
-    SampleService mockSampleService;
-
-    @Autowired
-    MockMvc mockMvc;
-
-    @Test
-    public void hello() throws Exception {
-        when(mockSampleService.getName()).thenReturn("whiteship");
-
-        mockMvc.perform(get("/hello"))
-                .andExpect(content().string("hello whiteship"));
-
-        assertThat(outputCapture.toString()).contains("holoman").contains("skip");
-    }
-}
-```
-=======
 ```java
 @Profile("test")
 @Configuration
@@ -1206,5 +1031,4 @@ public class SampleRunner implements ApplicationRunner {
 }
 ```
 
-### 로깅 커스텀하기
->>>>>>> 857e7ea5ef66c41306d8dd26df48488a8b0a12b3
+### 스프링 뷰트 시큐리티
