@@ -1193,3 +1193,12 @@ Hello Static Resource AHHHA
 
 ```
 
+webjars-locator-core 의존성을 추가하면 버저닝도 생략가능
+
+```xml
+<dependency>
+    <groupId>org.webjars</groupId>
+    <artifactId>webjars-locator-core</artifactId>
+    <version>0.35</version>
+</dependency>
+```
