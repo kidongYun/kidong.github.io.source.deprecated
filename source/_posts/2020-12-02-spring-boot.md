@@ -1014,6 +1014,7 @@ logging.level.com.example.springdemo=DEBUG
 ```
 
 ```java
+
 @Component
 public class SampleRunner implements ApplicationRunner {
 
@@ -1029,6 +1030,166 @@ public class SampleRunner implements ApplicationRunner {
         logger.info("==============================");
     }
 }
+
 ```
 
-### 스프링 뷰트 시큐리티
+### Spring boot Http Message Converter
+
+-> Http 요청 전문을 객체로 변경하거나, 객체를 Http 응답 전문으로 변경할때 사용되는 객체.
+요 객체를 호출하는 어노테이션이 @ResponseBody, @RequestBody 이다. 이건 익숙하지.
+
+우리가 객체를 반환하게끔 코드를 짰지만 이거를 Http 전문으로 변경해주는 것이 기본적으로 jackson을 사용. String, int 같은 원시타입도 메세지 컨버터가 사용된다.
+@Controller 어노테이션을 쓰고 @ResponseBody 어노테이션을 안넣으면 REST 형태가 아니기때문에 return 값에 해당하는 view resolver 를 찾게된다.
+
+
+```java
+
+@RestController
+public class UserController {
+
+    @GetMapping("/hello")
+    public String hello() {
+        return "hello";
+    }
+
+    @PostMapping("/users/create")
+    public User create(@RequestBody User user) {
+        return user;
+    }
+}
+
+```
+
+```java
+
+@RunWith(SpringRunner.class)
+@WebMvcTest(UserController.class)
+public class UserControllerTest {
+    @Autowired
+    MockMvc mockMvc;
+
+    @Test
+    public void hello() throws Exception {
+        mockMvc.perform(get("/hello"))
+                .andExpect(status().isOk())
+                .andExpect(content().string("hello"));
+    }
+
+    @Test
+    public void createUser_JSON() throws Exception {
+        String userJson = "{\"username\":\"keesun\", \"password\":\"123\"}";
+
+        mockMvc.perform(post("/users/create")
+                .contentType(MediaType.APPLICATION_JSON_UTF8)
+                .accept(MediaType.APPLICATION_JSON_UTF8)
+                .content(userJson))
+                .andExpect(status().isOk())
+                .andExpect(jsonPath("$.username", is(equalTo("keesun"))))
+                .andExpect(jsonPath("$.password", is(equalTo("123"))));
+    }
+}
+
+```
+
+```java
+
+public class User {
+    private Long id;
+    private String username;
+    private String password;
+
+    public Long getId() {
+        return id;
+    }
+
+    public void setId(Long id) {
+        this.id = id;
+    }
+
+    public String getUsername() {
+        return username;
+    }
+
+    public void setUsername(String username) {
+        this.username = username;
+    }
+
+    public String getPassword() {
+        return password;
+    }
+
+    public void setPassword(String password) {
+        this.password = password;
+    }
+}
+
+```
+
+### Spring boot ViewResolver
+
+ContentNegotiationViewResolver - 들어오는 요청의 accept Header 에 따라서 응답을 다르게 해주는 resolver
+
+```java
+
+    @PostMapping("/users/create")
+    public User create(@RequestBody User user) {
+        return user;
+    }
+```
+
+메인에 해당하는 위 소스를 수정하지 않아도 accept 에따라서 xml 객체가 내려갈수도 json 객체가 내려갈수도 있다. 위에 있는 contentNegotialtionViewResolver 이녀석 덕분에.
+
+HttpMediaTypeNotAcceptableException 406 에러가 뜬다면 객체를 accept에 원하는 전문의 형태로 변환해줄 객체가 없다는 의미.
+
+spring boot 자동설정에 messageConvert 쪽을 보면 Xml을 매핑해주는 객체가 기본적으로 없다. 그래서 아래 의존성을 추가해야한다.
+
+```xml
+
+        <dependency>
+            <groupId>com.fasterxml.jackson.dataformat</groupId>
+            <artifactId>jackson-dataformat-xml</artifactId>
+            <version>2.9.6</version>
+        </dependency>
+
+```
+
+### Spring boot 정적리소스 지원
+
+이미 만들어져있는 리소스를 정적리소스. 이거를 바로 반환할수 있도록 지원함
+
+### Spring boot 웹JAR
+
+클라이언트에서 사용하는 자바스크립트 라이브러리 react, vue, bootstrap, jquery 이것들을 jar 파일로 dependency를 추가할 수 있다.
+
+jquery를 추가해보자.
+
+```xml
+        <dependency>
+            <groupId>org.webjars.bower</groupId>
+            <artifactId>jquery</artifactId>
+            <version>3.3.1</version>
+        </dependency>
+```
+
+```html
+
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <title>Title</title>
+</head>
+<body>
+Hello Static Resource AHHHA
+
+<script src="/webjars/jquery/3.3.1/dist/jquery.min.js"></script>
+<script>
+    $(function() {
+        alert("ready");
+    })
+</script>
+</body>
+</html>
+
+```
+
