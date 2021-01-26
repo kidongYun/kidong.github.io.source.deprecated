@@ -1202,3 +1202,120 @@ webjars-locator-core 의존성을 추가하면 버저닝도 생략가능
     <version>0.35</version>
 </dependency>
 ```
+
+### favicon, index 페이지
+
+static 디렉토리에 favicon.ico 파일을 넣는다. 그리고 빌드하면 끝.
+
+안바뀌면 파비콘을 직접 호출한 후에, 브라우저 새로고침하면 됨. 브라우저 캐시때문에 발생하는 문제.
+
+### Thymeleaf
+
+템플릿엔진이라는 것은 뷰를 만드는데 주로쓰고, 코드 제너레이션, 이메일 템플릿 이런거 사용
+
+jsp를 권장하지 않는이유.
+-> jar 패키징 할때는 동작하지 않고 war 패키징을 해야함.
+-> 독립적으로 임베디드 톰캣으로 구현하기가 맞지 않음.
+-> undertow는 jsp를 지원하지 않음.
+-> 의존성 문제도 꽤 있다고 함.
+
+Thymeleaf
+-> 비교적 최근에 만들어진 템플릿 엔진
+-> 웹서버를 띄우지않고도 프론트쪽 작업이 가능하다. 데이터를 임시로 placeholder 처럼 처리가 가능.
+
+view쪽 테스트코드 작성하기
+
+```html
+<!DOCTYPE html>
+<html lang="en" xmlns:th="http://www.thymeleaf.org">
+<head>
+    <meta charset="UTF-8">
+    <title>Title</title>
+</head>
+<body>
+<h1 th:text="${name}">Name</h1>
+</body>
+</html>
+```
+
+```java
+@Controller
+public class SampleController {
+
+    @GetMapping("/hello")
+    public String hello(Model model) {
+        model.addAttribute("name", "keesun");
+        return "hello";
+    }
+}
+```
+
+```java
+@RunWith(SpringRunner.class)
+@WebMvcTest(SampleController.class)
+public class SampleControllerTest {
+    @Autowired
+    MockMvc mockMvc;
+
+    @Test
+    public void hello() throws Exception {
+        mockMvc.perform(get("/hello"))
+                .andExpect(status().isOk())
+                .andDo(print())
+                .andExpect(view().name("hello"))
+                .andExpect(model().attribute("name", is("keesun")))
+                .andExpect(content().string(containsString("keesun")));
+    }
+}
+```
+
+### HtmlUnit
+
+html을 단위테스트하기 위한 툴
+
+form의 submit 행위를 모킹도 가능
+특정 브라우저인척 할수도 있다.
+dom tree element 탐색 가능
+
+### Spring HATEOAS
+
+REST API 를 만들 때 연관된 링크정보들을 클라이언트에게 함께 제공
+
+```java
+
+@RestController
+public class SampleController {
+
+    @GetMapping("/hello")
+    public Resource<Hello> hello() {
+        Hello hello = new Hello();
+        hello.setPrefix("Hey,");
+        hello.setName("Keesun");
+
+        Resource<Hello> helloResource = new Resource<>(hello);
+        helloResource.add(linkTo(methodOn(SampleController.class).hello()).withSelfRel());
+
+        return helloResource;
+    }
+}
+
+```
+
+```java
+
+@RunWith(SpringRunner.class)
+@WebMvcTest(SampleController.class)
+public class SampleControllerTest {
+    @Autowired
+    MockMvc mockMvc;
+
+    @Test
+    public void hello() throws Exception {
+        mockMvc.perform(get("/hello"))
+                .andDo(print())
+                .andExpect(status().isOk())
+                .andExpect(jsonPath("$._links.self").exists());
+
+    }
+}
+```
