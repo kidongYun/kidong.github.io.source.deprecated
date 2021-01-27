@@ -1319,3 +1319,136 @@ public class SampleControllerTest {
     }
 }
 ```
+
+### 스프링 데이터 : 인메모리 데이터베이스
+
+H2 디비가 인메모리 데이터베이스다. -> 하드디스크에 데이터를 저장하는 것이 아니고 RAM 즉 메인 메모리에 데이터베이스를 가지는 형태
+데이터가 휘발성이라는 뜻이고 보통 테스트 같은 목적으로 주로 사용한다.
+
+Spring-JDB가 클래스패스에 있으면 자동설정이 필요한 빈을 설정해준다.
+    - DataSource
+    - JdbcTemplate
+    이 두가지가 자동설정해주는 객체
+
+데이터베이스에 대한 설정이 아무것도 없을경우 기본적으로 인메모리 데이터베이스 설정이 자동설정된다.
+
+아무 설정 없을때 자동설정이 만들어준 인메모리 데이터베이스의 기본 연결 정보
+
+URL : "testdb"
+username : "sa"
+password : ""
+
+```xml
+
+        <dependency>
+            <groupId>org.springframework.boot</groupId>
+            <artifactId>spring-boot-starter-jdbc</artifactId>
+        </dependency>
+        <dependency>
+            <groupId>org.springframework.boot</groupId>
+            <artifactId>spring-boot-starter-web</artifactId>
+        </dependency>
+
+        <dependency>
+            <groupId>com.h2database</groupId>
+            <artifactId>h2</artifactId>
+            <scope>runtime</scope>
+        </dependency>
+```
+
+```java
+
+@Component
+public class H2Runner  implements ApplicationRunner {
+    @Autowired
+    DataSource dataSource;
+
+    @Autowired
+    JdbcTemplate jdbcTemplate;
+
+    @Override
+    public void run(ApplicationArguments args) throws Exception {
+        try(Connection connection = dataSource.getConnection()) {
+            System.out.println(connection.getMetaData().getURL());
+            System.out.println(connection.getMetaData().getUserName());
+
+            Statement statement = connection.createStatement();
+            String sql = "CREATE TABLE USER(ID INTEGER NOT NULL, name VARCHAR(255), PRIMARY KEY (ID))";
+            statement.executeUpdate(sql);
+        }
+
+        jdbcTemplate.execute("INSERT INTO USER VALUES(1, 'keesun')");
+    }
+}
+
+```
+
+
+db 쪽 코드 작성시에 원래는 try-catch 혹은 try-resource 등으로 묶어서 처리하고
+오류가 난경우에는 롤백해주는 트랜잭션 관리를 해줘야 한다.
+
+인메모리 데이터베이스 H2 DB 같은경우 실제 DB 내용을 어떻게 볼수 있는가.
+H2 콘솔를 사용 하면 된다 
+
+2가지 방법이 있는데
+
+1. spring-boot-devtools 를 추가하거나 의존성을 추가하거나.
+
+2. spring.h2.console.enabled=true 이것만 추가 application.properties 에서 추가
+
+spring 부트 2.3 이후 부터는 h2 디비 이름을 자동설정 해줄때 매번 이름이 변경되도록 수정되었따.
+
+jdbc:h2:mem:65ac26dd-bae3-49a9-94bf-44bb5e9b1992
+
+이런식으로 뒤에 해쉬코드같은 값이 들어가는데 동일하게 유지하고 싶다면
+
+spring.datasource.generate-unique-name=false
+
+application.properties에 저 설정을 추가
+
+localhost:8080/h2-console 접속
+
+
+기본적인 jdbc 라이브러리를 사용하는거 보다 스프링에서 제공하는 jdbctemplate를 사용하면
+리소스를 반납하는 부분도 잘되어있고, 한줄로 코딩이 가능하기 때문에 가독성도 좋다.
+예외가 발생했을 때에도 보다 상세하게 에러 내용을 반환해주기 떄문에 이걸 사용하는 것을 추천함.
+
+### DBCP
+
+커넥션 풀이다. 히카리 같은거
+
+커넥션 하는 작업이 굉장히 오래걸리는 작업이기 떄문이 미리 생성해두고 이를 풀처럼 사용하는 것
+
+스프링 부트는 히카리CP를 기본적으로 사용
+
+스프링 부트에서 DBCP를 설정하는 방법은 application.properties 여기에 설정 가능
+
+```
+```
+
+### mysql
+
+mysql 커넥터 의존성 추가.
+
+```xml
+        <dependency>
+            <groupId>mysql</groupId>
+            <artifactId>mysql-connector-java</artifactId>
+        </dependency>
+```
+
+mysql 설치
+
+```
+> docker run -p 3306:3306 --name mysql_boot -e MYSQL_ROOT_PASSWORD=1 -e MY_SQL_DATABASE=springboot -e MYSQL_USER=keesun -e MYSQL_PASSWORD=pass -d mysql
+```
+
+application.properties 에 mysql 연동 정보 설정
+
+```
+spring.datasource.url=jdbc:mysql://localhost:3306/springboot
+spring.datasource.username=keesun
+spring.datasource.password=pass
+```
+
+datasource 가 어떤 DBCP를 사용하는지 확인하려면 datasource.getClass() 찍어보면 된다.
