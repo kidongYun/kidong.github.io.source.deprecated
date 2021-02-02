@@ -52,7 +52,12 @@ public class SecurityConfig extends WebSecurityConfigurerAdapter {
     protected void configure(HttpSecurity http) throws Exception {
         http
         .csrf().disable()
-        .authorizeRequests().anyRequest().authenticated()
+
+        .and()
+        .authorizeRequests()
+        .antMatchers("/api/v1/sign/up", "/api/v1/sign/in", "/swagger-ui.html").permitAll()
+        .anyRequest().authenticated()
+        
         .and()
         .httpBasic();
     }
