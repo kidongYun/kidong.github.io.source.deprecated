@@ -1,7 +1,7 @@
 ---
 layout: post
-title:  "Jackson을 사용해서 배열로 시작하는 Json 문자열을 객체로 변경"
-date:   2021-01-31 00:0054 +0900
+title:  "Spring data redis"
+date:   2021-02-02 00:0054 +0900
 categories: java
 ---
 
@@ -126,4 +126,11 @@ public class RedisRunner implements ApplicationRunner {
         System.out.println(byId.get().getEmail());
     }
 }
+```
+
+hash들은 get hello 이런식으로 못가져 온다.  hash get 으로 가져와야 한다.
+
+```
+hget accounts:1b27ba23-e840-4a6a-b6c4-41b036dabfbd email
+hgetall accounts:1b27ba23-e840-4a6a-b6c4-41b036dabfbd
 ```
