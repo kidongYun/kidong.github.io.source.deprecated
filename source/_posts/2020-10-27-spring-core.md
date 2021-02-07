@@ -179,6 +179,7 @@ public class BookService {
 
 생성자 주입을 하는 코드이다. 생성자에서 @Autowired 선언을 해두면 해당 파라미터 객체들은 빈에서 가져오게 된다. 
 
+
 ```java
 
 @Service
