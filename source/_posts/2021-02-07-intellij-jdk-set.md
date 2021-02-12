@@ -7,4 +7,4 @@ categories: java
 
 Project Structure 에서 변경한다. 변경해도 안되면.
 
-.idea 폴더를 지우고 재시작
+.idea 폴더를 지우고 재시작하면 된다.
