@@ -335,3 +335,185 @@ public class Database {
 ```
 
 synchronized 개선, if(singleton == null) 코드 개선
+
+
+
+### 실전 : 로그 라이터 만들기
+
+싱글톤 패턴을 적용해보기 위해서 로깅하는 객체를 만들어 보자.
+
+```java
+
+public class LogWriter {
+    private static LogWriter singleton = new LogWriter();
+    private static BufferedWriter bw;
+
+    private LogWriter() {
+        try {
+            bw = new BufferedWriter(new FileWriter("log.txt"));
+        } catch (Exception e) {
+
+        }
+    }
+
+    public static LogWriter getInstance() {
+        return singleton;
+    }
+
+    public synchronized void log(String str) {
+        try {
+            bw.write(str + "\n");
+            bw.flush();+
+        } catch(Exception e) {
+
+        }
+    }
+
+    @Override
+    protected void finalize() {
+        try {
+            
+        } catch (Throwable ex) {
+
+        }
+    }
+}
+
+public class TestPattern1 {
+    public static void main(String[] args) {
+        LogWriter logger;
+
+        logger = LogWriter.getInstance();
+        logger.log("홍길동");
+
+        logger = LogWriter.getInstance();
+        logger.log("전우치");
+    }
+}
+
+```
+
+### 플라이웨이트 패턴 이해하기
+
+싱글턴 패턴과 마찬가지로 오브젝트의 생성을 제한하는 패턴
+
+플라이웨이트 패턴은 비용이 큰 자원을 공통으로 사용할 수 있도록 만드는 패턴
+자원에 대한 비용은 크게 두가지로 나눠 볼 수 있다.
+
+1. 중복 생성될 가능성이 높은 경우.
+-> 자주 사용될 가능성이 높다는 의미
+
+2. 자원 생성 비용은 큰데 사용 빈도가 낮은 경우
+-> 요청시에 생성하며, 마무리되면 정리한다.
+
+나무를 생성한다고 치면 나무의 필요한 요소는 잎사귀, 뿌리, 가지 등이 있다.
+잎사귀, 뿌리, 가지에 대한 정보가 고유하게 가져아할 정보가 있는 객체가 아니라면 이 객체들을 싱글톤으로 생성하고
+이 객체들을 참조 형식으로 나무가 바라보도록 할 수 있다.
+
+이렇게 하면 나무를 위해서 잎사귀, 뿌리, 가지등의 객체가 매번 새롭게 생성되지 않으며, 각각 하나의 객체만을 가지고
+많은 나무들을 구현할 수 있다.
+나무는 단지 각 객체를 참조할 수 있는 값만 가지면 된다.
+
+실제로 쓰기 위해서는. 나무도 고유한 값을 가지는 데이터들이 잇을 거시다. 이런 값들은 어쩔수 없고
+고유하지 ㅇ낳아도 되는 데이터들만 묶어서 그거를 참조하게끔 구현한다.
+
+** 한 객체 내에서 싱글톤으로 쓸수 있는 객체를 새로운 객체로 표현하고 이를 참조하는 구조를 가짐.
+
+장점
+-> 많은 객체를 만들  때 성능을 향상시킬 수 있다.
+-> 많은 객체를 만들 때 메모리를 줄일 수 있다.
+-> state pattern과 쉽게 결합될 수 있다.
+
+단점
+-> 특정 인스턴스 공유 컴포넌트를 다르게 설정할 수 없다.
+
+
+### 기존 자바에서 코드에서 볼 수 있는 플라이웨이트 패턴
+
+```java
+
+public class TestPattern {
+    public static void main(String[] args) {
+        String str1 = new String("홍길동");
+        String str2 = new String("홍길동");
+        String str3 = "홍길동";
+        String str4 = "홍길동";
+    }
+}
+```
+
+str1, str2 은 별도의 인스턴스
+str3, str4 은 같은 인스턴스 String 객체가 싱글톤 패턴을 사용하고 있음을 알 수 있다.
+
+```java
+
+public class TestPattern {
+    public static void main(String[] args) {
+        Mydata md1 = new Mydata();
+        md1.xpos = 10;
+        md1.ypos = 11;
+        md1.name = "홍길동";
+
+        MyData md2 = new MyData();
+        md2 = md1;
+
+        MyData md3 = new MyData();
+        md3.xpos = 20;
+        md3.ypos = 21;
+        md3.name = "손오공"
+
+        md2.name = "전우치"
+        md2.xpos = 5;
+    }
+}
+
+class MyData {
+    int xpos;
+    int ypos;
+    String name;
+}
+
+```
+
+### 플라이웨이트 패턴 구현하기.
+
+```java
+
+public class Subject {
+    private String name;
+
+    public Subject(String name) {
+        this.name = name;
+    }
+}
+
+public class FlyweightFactory {
+    private static Map<String, Subject> map = new HashMap<String, Subject>();
+
+    public Subject getSubject(String key) {
+        Subject subject = map.get(key);
+
+        if(subject == null) {
+            subject = new Subject(key);
+            map.put(key, subject);
+
+            System.out.println("새로 생성 " + key);
+        } else {
+            System.out.println("재사용 " + key);
+        }
+
+        return subject;
+    }
+}
+
+public class TestPattern {
+    public static void main(String[] args) {
+        FlyweightFactory flyweight = new Flyweightfactory();
+        flyweight.getSubject("a");
+        flyweight.getSubject("a");
+        flyweight.getSubject("b");
+        flyweight.getSubject("b");
+    }
+}
+
+```
