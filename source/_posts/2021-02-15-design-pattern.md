@@ -517,3 +517,210 @@ public class TestPattern {
 }
 
 ```
+
+### 빌더 패턴
+
+빌더패턴은 객체를 생성할 때 흔하게 사용하는 패턴이다.
+자바로 코딩할 때 다음과 같은 스타일로 객체를 생성하는 코드가 있다면, 빌더 패턴을 사용했다고 살 수 있다.
+체이닝 기법을 활용한다.
+
+객체 일관성, 변경 불가능성의 특징을 가지고 있기 때문에 빌더패턴을 사용.
+코드의 가독성과 유지보수하기 쉬워진다
+
+생성자 인자가 많을 때는 빌더패턴을 사용하라.
+
+```java
+
+@Getter
+@Setter
+public class Person {
+    private String firstName;
+    private String lastName;
+    private LocalDate birthDate;
+    private String addressOne;
+    private String addressTwo;
+    private String sex;
+    private boolean driverLicence;
+    private boolean married;
+
+    public static PersonBuilder builder() {
+        return new PersonBuilder();
+    }
+}
+
+public class PersonBuilder {
+    private String firstName;
+    private String lastName;
+    private LocalDate birthDate;
+    private String addressOne;
+    private String addressTwo;
+    private String sex;
+    private boolean driverLicence;
+    private boolean married;
+
+    public PersonBuilder firstName(String firstName) {
+        this.firstName = firstName;
+        return this;
+    }
+
+    public PersonBuilder lastName(String lastName) {
+        this.lastName = lastName;
+        return this;
+    }
+
+    public PersonBuilder birthDate(LocalDate birthDate) {
+        this.birthDate = birthDate;
+        return this;
+    }
+
+    public PersonBuilder addressOne(String addressOne) {
+        this.addressOne = addressOne;
+        return this;
+    }
+
+    public PersonBuilder addressTwo(String addressTwo) {
+        this.addressTwo = addressTwo;
+        return this;
+    }
+
+    public PersonBuilder sex(String sex) {
+        this.sex = sex;
+        return this;
+    }
+
+    public PersonBuilder driverLicence(boolean driverLicence) {
+        this.driverLicence = driverLicence;
+        return this;
+    }
+
+    public PersonBuilder married(boolean married) {
+        this.married = married;
+        return this;
+    }
+
+    public Person build() {
+        Person person = new Person();
+        person.setFirstName(firstName);
+        person.setLastName(lastName);
+        person.setAddressOne(addressOne);
+        person.setAddressTwo(addressTwo);
+        person.setBirthDate(birthDate);
+        person.setSex(sex);
+        person.setDriverLicence(driverLicence);
+        person.setMarried(married);
+        return person;
+    }
+}
+
+public class TestPatterm {
+    public static void main(String[] args) {
+        Person p1 = Person.builder()
+            .firstName("FirstName")
+            .lastName("LastName")
+            .addressOne("금천구 가산동 월드메르비앙2차 KOSMO")
+            .addressTwo("AddressTwo")
+            .birthDate(LocalDate.of(1995, Month.APRIL, 13))
+            .sex("male")
+            .driverLicence(true)
+            .married(true)
+            .build();
+
+        System.out.println(p1.getAddressOne());
+    }
+}
+
+```
+
+빌더안에 Person 필드들을 주는거보다 Person 객체를 그냥 주는게 훨씬 나음 보일러플레이트 코드 개쩜
+그리고 빌더의 목적 중 하나는 값이 중간에 변경이 불가능하도록 하는 건데 저렇게하면 변경이 결국 가능
+setter를 제거하고 buider 내부에서는 한번에 생성 되도록 final 키워드 선언해야됨
+
+static 선언하는거 저거 하나 건졌다.
+
+
+### 옵저버 패턴
+
+한 객체의 상태가 바뀌면 그 객체에 의존하는 다른 객체들한테 연락이 가고 자동을 ㅗ내용이 갱신되는 방식으로
+일대다 의존성을 정의.
+
+Subject 객체가 있음. 이 객체는 bCheck 값을 가짐
+Observer 객체 1,2,3 Subject의 bCheck 값을 감시한다.
+bCheck 값이 변경되면 등록되어있는 필요한 동작 수행
+
+```java
+
+public class PlayController extends Observable {
+    private boolean bPlay;
+
+    public PlayController() {
+
+    }
+
+    public void setFlag(boolean bPlay) {
+        this.bPlay = bPlay;
+        setChanged();
+        notifyObservers();
+    }
+
+    public boolean getFlag() {
+        return bPlay;
+    }
+}
+
+/** Observer 객체 */
+public class MyClassA implements Observer {
+    Observable observable;
+    private boolean bPlay;
+
+public MyClassA(Observable o) {
+    this.observable = o;
+    observable.addObserver(this);
+}
+
+    @Override
+    public void update(Observable o, Object arg) {
+        if(o instanceof PlayController) {
+            PlayController myControl = (PlayController) o;
+            this.bPlay = myControl.getFlag();
+            myActControl();
+        }
+    }
+
+    public void myActControl() {
+        if(bPlay) {
+            System.out.println("MyClassA : 동작을 시작합니다.");
+        } else {
+            System.out.println("MyClassA : 동작을 정지합니다.");
+        }
+    }
+}
+
+/** Observer 객체 */
+public class MyClassB implements Observer {
+    Observable observable;
+    private boolean bPlay;
+
+public MyClassB(Observable o) {
+    this.observable = o;
+    observable.addObserver(this);
+}
+
+    @Override
+    public void update(Observable o, Object arg) {
+        if(o instanceof PlayController) {
+            PlayController myControl = (PlayController) o;
+            this.bPlay = myControl.getFlag();
+            myActControl();
+        }
+    }
+
+    public void myActControl() {
+        if(bPlay) {
+            System.out.println("MyClassB : 동작을 시작합니다.");
+        } else {
+            System.out.println("MyClassB : 동작을 정지합니다.");
+        }
+    }
+}
+
+```
