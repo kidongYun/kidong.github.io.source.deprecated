@@ -723,4 +723,13 @@ public MyClassB(Observable o) {
     }
 }
 
+public class TestPattern {
+    public static void main(String[] args) {
+        PlayController controller = new PlayController();
+
+        MyClassA classA = new MyClassA(Controller);
+        MyClassB classB = new MyClassB(controller);
+    }
+}
+
 ```
