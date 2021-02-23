@@ -733,3 +733,146 @@ public class TestPattern {
 }
 
 ```
+
+### 자바 내장 옵저버 패턴의 단점과 한계
+
+(1) Observable은 클래스다.
+Observable이 클래스기 때문에 서브클래스를 만들어야 한다는 점이 문제다. 이미 다른 수퍼클래스를 확장하고 있느 클래스에 Observable의 기느을 추가할 수 없기 때문이다.
+그래서 재사용성에 제약이 생긴다.
+
+(2) Observable 클래스의 핵심 메서드를 외부에서 호출할 수 없다.
+Observable API를 살펴보면 setChanged() 메서드가 protected로 선언되어 있다.
+Observable의 서브클래스에서만 setChanged()를 호출할 수 있다. 결국 직접 어떤 클래스를 만들고 , Observable 서브클래스를 인스턴스 변수로 사용하는 방법도 쓸 수 없다. 이런 디자인은 상속보다는 구성을 사용한다는 디자인 원칙도 위배된다.
+
+```java
+
+public interface Pulisher {
+    public void addObserver()
+}
+```
+
+
+### 어댑터 패턴의 이해와 구현하기
+
+이미 제공되어 있는것 과 필요한 것의 차이를 없애주는 것이 Adapter 패턴.
+
+한 클래스의 인터페이스를 클라이언트에서 사용하고자 하는 다른 인터페이스로 변환.
+Adapter 패턴은 Wrapper 패턴으로 불리기도 한다.
+
+두가지 종류가 있음
+클래스에 의한 Adapter 패턴
+인스턴스에 의한 Adapter 패턴
+
+어떤 경우에 사용하는가.
+-> 기존에 존재하는 클래스를 활용하여 코드를 작서ㅇ할 떄.
+-> 기존 클래스를 개조해서 필요한 클래스를 만든다.
+-> 이 패턴으로 필요한 메서드를 발 빠르게 만들 수 있따.
+-> 만약 버그가 발생해도 기존의 클래스에는 버그가 없으므로 Adapter 역할의 클래스를 중점적으로 조사하면 되고, 프로그램 검사도 상당히 쉬워진다.
+
+어댑터 패턴이란 기존에 존재하는 클래스를 커스터마이징 해서 새로운 클래스를 만드는거
+
+이미 만들어진 클래스를 새로운 인터페이스에 맞게 개조시킬 떄는 당연히 Adapter 패턴을 사용해야 한다.
+그러나 실제 우리가 새로운 인터페이스에 맞게 개조시킬 때는 기존 클래스의 소스를 바꾸어서 '수정' 하려고 한다.
+이것을 조금 바꿈녀 분명 작업은 끝이나 라고 생각하기 쉽다.
+그러나 그렇게 하면 동작 테스트가 이미 끝난 기존의 클래스를 수정한 후에 다시 한번 테스트 해야한다.
+-> 기존 클래스를 변경하게 되면 그에 대한 테스트를 다시 시행해야하기 때문에 작업 범위가 넓어진다는 의미
+
+adapter 패턴은 기존의 클래스를 전혀 수정하지 않고 목적한 인터페이스에 맞추려는 것.
+adapter 패턴은 기존 클래스의 소스를 반드시 가질 필요가 없으며 기존 클래스의 사양(Interface) 만 알면 새로운 클래스를 만들 수있다
+
+
+Adapter 패턴과 유사한 두가지 패턴 Bridge, Decorator
+
+### 인스턴스에 의한 Adapter 패턴
+
+```java
+public interface APlayer {
+    void play(String fileName);
+    void stop();
+}
+
+public class APlayerImpl implements Aplayer {
+    @Override
+    public void play(String fileName) {
+        System.out.println("(A) " + fileName);
+    }
+
+    @Override
+    public void stop() {
+
+    }
+}
+
+
+public interface BPlayer {
+    void playFile(String fileName);
+    void stopFile();
+}
+
+public class BPlayerImpl implements BPlayer {
+    @Override
+    public void playFile(String fileName) {
+        System.out.println("(B) " + fileName);
+    }
+
+    @Override
+    public void stopFile() {
+
+    }
+}
+
+public class BToAAdapter implements APlayer {
+    private BPlayer media;
+
+    public BToAAdapter(BPlayer media) {
+        this.media = media;
+    }
+
+    @Override
+    public void play(String fileName) {
+        System.out.print("Using Adapter : ");
+        media.playFile(fileName);
+    }
+
+    @Override
+    public void stop() {
+
+    }
+}
+
+```
+
+APlayer , BPlayer 간의 어댑터.
+기존에 잘 동작하다가 BPlayer로 변경시 문제가 발생한다면
+BToAAdapter 이쪽 부분만 테스트하면 된다. 
+
+### 클래스에 의한 어댑터
+
+```java
+
+public interface APlayer {
+    void play(String fileName);
+    void stop();
+}
+
+public class APlayerImpl implements Aplayer {
+    @Override
+    public void play(String fileName) {
+        System.out.println("(A) " + fileName);
+    }
+
+    @Override
+    public void stop() {
+
+    }
+}
+
+public abstract class BPlayer {
+    public abstract void playFile(String fileName);
+    public abstract void stopFile();
+}
+
+public class BPlayerImpl extends BPlayer {
+    
+}
+```
