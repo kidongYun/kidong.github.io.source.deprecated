@@ -94,3 +94,36 @@ char[] chars = str.toCharArray();
 ```java
 Arrays.stream(numbers).boxed().map(String::valueOf).collect(toList())
 ```
+
+### String[] -> String
+
+```java
+Collectors.joining()
+```
+
+### java 배열을 뒤집어주는 기능 
+
+```java
+        Collections.reverse(list);
+```
+
+### 테스트 셋의 종류
+
+ null을 넣는다던지, 엄청 큰값을 넣는다던지..원소가 하나만 있다던지, 음수값, 오버플로우값, 비어있는 배열에 접근, 초기값이나 마지막 값이 이벤트인 경우
+
+
+ ### Dynamic Programming - 카데인 알고리즘 (부분 배열의 최대 합 구하기)
+
+ ### 유클리드 알고리즘
+
+ ```java
+ /* a가 더 큰값 */
+private int gcd(int a, int b) {
+    if(a % b == 0) {
+        return b;
+    }
+        
+    return gcd(b, a%b);
+}
+
+ ```
