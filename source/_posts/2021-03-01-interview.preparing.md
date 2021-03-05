@@ -216,3 +216,30 @@ Request를 분석하여 매핑된 Controller를 찾는 HandlerMapping 단계를 
 Controller에서 view를 return 했을 경우 해당하는 view를 찾아 client에게 return 한다.
 
 ## tomcat vs undertow vs netty
+
+undertow
+NON-Blocking API와 Bloking API 모두 지원한다.
+WAS = 웹서버 + 서블릿 컨테이너.
+
+
+## Kafka
+
+## RabbitMQ
+
+## CDN (Content Delivery Network)
+원거리에 있는 서버의 컨텐츠를 매번 네트워크 상으로 데이터를 받는 것은 성능적인 문제가 있기 때문에. 보다 가깐 곳에 프록시 서버를 두고 캐싱하는 방법을 말하는 것 같음.
+
+CDN은 콘텐츠에 대한 요청이 발생하면 사용자와 가장 가까운 위치에 존재하는 서버로 매핑시켜, 요청된 파일의 캐싱된(사전 저장된) 버전으로 요청을 처리합니다
+
+인터넷 트래픽의 절반 이상이 CDN(콘텐츠 전송 네트워크)을 통해 전송됩니다. CDN의 목표는 웹 페이지에 대한 요청이 이동해야 하는 물리적 거리를 줄여 요청 제출 시간과 장치에 완전히 로딩되는 웹 페이지 간의 지연 시간을 줄이는 것입니다.
+
+기본적으로 전세계적으로 인터넷을 연결시켜주는 가장 큰 매체는 해저케이블.
+
+
+## CORS
+
+## RESTful API
+
+## 함수형 프로그래밍.
+
+## Call By Value Call By Reference
