@@ -45,18 +45,20 @@ java에서 RDB 접근할때에는 JDBC API를 주로 사용한다. 이 API 기�
 
 세번째 방법 @Transactional 어노테이션 적용.
 
+### JDBC 트랜잭션 유지 방법
+
+JDBC API를 사용할 때 트랜잭션 유지 방법
+
+1. cath 블록에서 rollback 작업 명시
+
+2.  DatasourceTransactionManager
+
+3. @Transactional 
+
 ### JPA 에서의 트랜잭션 관리.
 
 Persistent Context 에서 애초에 커밋을 바로 하지 않고 트랜잭션이 완료되었을 때 리얼 DB에 커밋을 함.
 그렇기 때문에 한 트랜잭션 내에서 오류가 발생하면 아에 DB에 넣은 내용이 없기 때문에 롤백 처리가 간단함.
-
-
-
-
-
-
-
-## 3. @Transactional
 
 
 
@@ -146,33 +148,48 @@ nginx 에 대응하기 위해서 apache 에서 event-driven 구조를 지원하�
 
 ### 정의
 
+기존의 웹서버 기능에 Servlet Container가 포함된 프로그램.
+동적 컨텐츠를 제공할 수 있다.
+
+서버의 비즈니스 로직을 실행하여 해당 결과물을 요청 객체에게 반환해주는 프로그램
+
 ### 웹서버와 WAS를 병행해서 사용하는 이유
 
 1. 2티어 구조로 변경함으로써 각자 역할에 대해서 응집도를 높이고 Loose Coupling. 디버깅도 하기 쉬워진다.
 
 
-2. 성능 향상 - 각자의 서버의 관심사가 몰입되기 때문에  
-3. 웹서버 1대 WAS 여러대를 둘때 로드밸런싱을 해주는 역할이 웹서버.
+2. 성능 향상 - 각자의 서버의 관심사가 몰입되기 때문에 캐시 적중률이 높아질 것 같습니다.
 
-톰캣은 apache의 웹서버의 역할도 가지고 있기 때문에 내부적으로는 웹서버 + 서블릿 컨테이너로 구분된다고 할 수 있따.
+3. 웹서버 1대 WAS 여러 대를 둘때 로드밸런싱을 해주는 역할이 웹서버.
+
+4. 웹서버만 대외적으로 드러나고 이 웹서버를 통해서 WAS를 접근하게 됨으로 보안이 강화된다. WAS에서는 대부분 DB를 접속하는 기능도 포함되어 있기 때문에 노출시키지 않는 것이 좋다.
+
+
+### 웹서버에서 WAS까지 데이터 흐름 이해하기
+
+톰캣은 apache의 웹서버의 역할도 가지고 있기 때문에 내부적으로는 웹서버 + 서블릿 컨테이너로 구분된다고 할 수 있다.
 
 웹서버가 처리할 수 없는 동적 컨텐츠에 대한 요청이 들어오면 서블릿 컨테이너에서 이 요청을 처리하기 위한 서블릿을 생성한다.
 
-스프링 MVC에서는 DispatcherServlet 이라는 요소가 있는데 이 녀석이 Servlet을 생성하고 Controller 영역에게 처리를 위임한다.
+실제로 DispatcherServlet 이 녀석은 Servlet 인터페이스를 구현한 객체이다. 그래서 스프링을 띄우고 있는 WAS라면 Servlet Container에서 DispatcherServlet을 실행한다.
 
-실제로 DispatcherServlet 이 녀석은 Servlet 인터페이스를 구현한 객체이다. 
+DispatcherServlet은 요청 데이터와 mapping되는 컨트롤러를 찾고 연결한다. 서버쪽의 비지니스 로직 처리가 완료되면 해당 결과물을 ViewResolver를 통해 반환한다.
 
-### tomcat vs undertow vs netty
+### WAS의 종류
 
+tomcat vs undertow vs netty
 undertow
 NON-Blocking API와 Bloking API 모두 지원한다.
 WAS = 웹서버 + 서블릿 컨테이너.
 
 
-## 7. httpd
+## 8. httpd
 httpd는 웹 서버의 백그라운드에서 실행되어, 들어오는 서버 요청을 대기하는 소프트웨어 프로그램이다. 이 데몬은 자동으로 요청에 응답하며 HTTP를 사용하여 인터넷을 경유, 하이퍼텍스트, 멀티미디어 문서들을 서비스한다.
 
-## 8. docker, docker-compose, 쿠버네티스
+## 9. docker, docker-compose, 쿠버네티스
+
+### 도커의 정의
+
 
 도커의 장점
 1. 획일화된 쉽고 빠른 실행 환경 구축
