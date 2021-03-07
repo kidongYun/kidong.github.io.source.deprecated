@@ -339,12 +339,15 @@ Spring의 세션 클러스터링은 기본적으로 Redis를 이용하여 진행
 
 NoSQL은 RDBMS에 비해 속도와 확장성이 뛰어납니다. 위 문서를 통해 MySQL과 같은 RDBMS는 속도가 중요한 캐싱에는 적합하지 않다는 것을 알 수 있었습니다.
 
-## 12. Redis, Memcached
 
-Redis는 다양한 데이터 타입을 지원, Memcached 는 String만 지원.
-Redis는 디스크에 백업 데이터를 저장.
 
-## 13. ELK (Elasticsearch, Logstash, Kibana)
+
+
+
+
+
+
+## 15. ELK (Elasticsearch, Logstash, Kibana)
 
 Elasticsearch 는 JSON 기반의 분산형 오픈 소스 RESTful 검색 엔진. 예전에 먼가 Redis 처럼 저장소로 생각했는데 그게 아니고 단순히 검색엔진.
 
@@ -388,7 +391,14 @@ elasticsearch는 수많은 analyzer와 tokenizer가 존재하는데 이를 잘 �
 
 로그 수집 파이프라인 -> Logstash
 
-## 운영체제 - 파이프라인
+
+
+
+
+
+
+
+## 16. 운영체제 - 파이프라인
 차를 만들떄 분업을 하는데 차체를 만들고,안에 엔진을 만들고, 도색을하고 여러 단계를 거치지.
 
 근데 차를 만들어달라는 요구가 들어옴.
@@ -398,7 +408,8 @@ elasticsearch는 수많은 analyzer와 tokenizer가 존재하는데 이를 잘 �
 
 파이프라인 구조.
 
-## pipeline hazard
+## 17. 파이프라인 하자드
+
 구조적 해저드. structural hazard
 다른 단계에 있는 명령어들이 동시에 같은 자원을 사용하려고 하는 상황 -> 해당 자원을 여러개 설치하는 방법으로 해결.
 
@@ -408,7 +419,33 @@ elasticsearch는 수많은 analyzer와 tokenizer가 존재하는데 이를 잘 �
 
 시각화 도구 -> Kibana
 
-## 14. Java Executor
+
+
+
+
+
+
+
+## 18. Java Executor
+
+태스크와 쓰레드를 생성하고 관리하는 것을 분리
+
+태스크 큐를 이용해 태스크를 관리
+
+shutdown()을 해줘야만 thread가 모두 중지된다. 만약 빼먹으면 leakage가 발생하는 것이니 주의하자.
+
+```java
+ExecutorService execService = Executors.newFixedThreadPool(2); 
+		
+execService.execute(new MyThreadTask());
+
+execService.shutdown();
+```
+
+
+
+
+
 
 
 ## 15. Spring Framework.
@@ -421,6 +458,15 @@ Client에게서 Request이 들어오면. 웹서버를 거치고 WAS로 와서 �
 Request를 분석하여 매핑된 Controller를 찾는 HandlerMapping 단계를 거치고 있으면 HandlerAdapter 단계에서 Controller를 호출.
 
 Controller에서 view를 return 했을 경우 해당하는 view를 찾아 client에게 return 한다.
+
+
+## 16. Pub-Sub
+
+메시지를 보내고 (Publish : 발행) 받는 (Subscribe : 구독) 형태의 통신
+
+즉 우체부라고 불리는 Publisher가 편지라고 불리는 Message를 Channel 혹은 Broker라고 불리는 우체통에 넣으면 Subscriber라고 불리는 우리가 편지를 가져갈 수 있는 것. Topic 은 501호와 같은 주소를 의미.
+
+Topic이 있는 Broker 혹은 Channel을 이용한 메시징 시스템이다.
 
 
 ## 16. Kafka
