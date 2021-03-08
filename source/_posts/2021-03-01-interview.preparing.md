@@ -357,7 +357,7 @@ NoSQL은 RDBMS에 비해 속도와 확장성이 뛰어납니다. 위 문서를 �
 
 ## 15. ELK (Elasticsearch, Logstash, Kibana)
 
-Elasticsearch 는 JSON 기반의 분산형 오픈 소스 RESTful 검색 엔진. 예전에 먼가 Redis 처럼 저장소로 생각했는데 그게 아니고 단순히 검색엔진.
+Elasticsearch 는 JSON 기반의 분산형 오픈 소스 RESTful 검색 엔진. 예전에 먼가 Redis 처럼 저장소로 생각했는데 그게 아니고 단순히 검색엔진이 아니고 저장소도 있따.
 
 그러면 데이터는 어디에 저장이 되어 있는 거지? 내부에 자체적으로 저장소를 가지는 거 같다.
 
@@ -453,19 +453,6 @@ execService.shutdown();
 
 
 
-
-
-
-## 15. Spring Framework.
-
-Client에게서 Request이 들어오면. 웹서버를 거치고 WAS로 와서 동적 웹 처리를 위한 Servlet container 영역으로 온다. Servlet container 영역에서 servlet 의 라이프사이클을 관리하는데 Servlet의 구현체인 DispatcherSevlet도 여기서 관리된다.
-
-여기서 Servlet container 는 톰캣 기반 설명임.
-
-
-Request를 분석하여 매핑된 Controller를 찾는 HandlerMapping 단계를 거치고 있으면 HandlerAdapter 단계에서 Controller를 호출.
-
-Controller에서 view를 return 했을 경우 해당하는 view를 찾아 client에게 return 한다.
 
 
 ## 16. Pub-Sub
