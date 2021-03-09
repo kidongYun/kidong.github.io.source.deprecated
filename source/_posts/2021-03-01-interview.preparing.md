@@ -566,6 +566,11 @@ java8 이후에 람다, 메소드 참조 문법이 생겨나면서 함수형 프
 
 ## 22. Call By Value Call By Reference
 
+값을 담고있는 메모리를 복사한후 그 복사한 메모리 번지를 넘겨주느냐
+
+값을 가리키고 있는 메모리번지를 담고 있는 메모리를 복사한 후 그 번지를 넘겨주느냐.
+
+
 ## 23. Stack
 
 세로로된 바구니같은 구조. 밑에있는 데이터들은 위에있는 데이터가 빠져나가야만 빼낼 수 있다.
@@ -1077,9 +1082,25 @@ B+ Tree 구조로 별도의 인덱스 테이블을 만듬.
 
 ## JPA 즉시로딩 지연로딩
 
+FetchType.EAGER
+
+FetchType.LAZY
+
 ## JPA N+1 문제
 
+이렇게 하위 엔티티들을 첫 쿼리 실행시 한번에 가져오지 않고, Lazy Loading으로 필요한 곳에서 사용되어 쿼리가 실행될때 발생하는 문제가 N+1 쿼리 문제입니다.
+
+@OneToMany 관계에서 Lazy Loading을 하고 Loop 참조를 하게 되면. N+1 문제 발생.
+
+이유는 이미 호스트에 해당하는 객체 정보를 가져왔기 때문에 JOIN으로 쿼리가 생성이 안되기 때문.
+
+해결방법 1. fetchJoin
+
+JPQL 에서 제공하는 fetchJoin을 활용.
+
 ## PreparedStatment와 Statement의 차이는 무엇
+
+JDBC가 쿼리를 보내는 과정은. 쿼리를 해석하고 컴파일하고 실행하는데. Statement는 매번 이 작업을 반복하지만 PreparedStatement는 이를 캐싱해서 처리한다. 
 
 ## 무중단 배포
 
