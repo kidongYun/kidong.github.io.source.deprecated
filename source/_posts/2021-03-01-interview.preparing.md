@@ -1338,6 +1338,10 @@ JPA는 인터페이스로써 ORM를 사용하기 위해서 규격화해둔 추�
 
 ## @transactional 동작 과정 ***
 
+Spring Configuration에 @EnableTransactionManagement 애노테이션을 붙입니다. (스프링 부트에서는 자동으로 해줍니다.)
+Spring Configuration에 트랜잭션 매니저를 지정합니다.
+그러면 스프링은 @Transactional 애노테이션이 달린 public 메서드에 대해서 내부적으로 데이터베이스 트랜잭션 코드를 실행해줍니다.
+
 ## JPA FetchType
 
 ## N+1 문제
@@ -1348,8 +1352,60 @@ JPA는 인터페이스로써 ORM를 사용하기 위해서 규격화해둔 추�
 
 ## Transient, Persistent, Removed, Detached
 
-@One
+## Controller, RestController는 뭐가 다른가요? 응답이 어떻게 다른가요?
 
-LAZY -> 
+@Controller의 주용도는 view를 리턴하는 것이고, @RestController는 데이터를 리턴하는 것이 주용도라고 할 수 있다.
+물론 @Controller의 경우 메서드에 @ResponseBody를 사용하여 객체를 리턴할 수 있다.
 
-EAGER -> 
+## Spring에서 Service, Controller, Repository annotation의 차이점
+
+@Component
+Spring에서 관리되는 객체임을 표시하기 위해 사용하는 가장 기본적인 annotation이다. 즉, scan-auto-detection과 dependency injection을 사용하기 위해서 사용되는 가장 기본 어노테이션이다.
+
+@Controller
+Web MVC 코드에 사용되는 어노테이션이다. @RequestMapping 어노테이션을 해당 어노테이션 밑에서만 사용할 수 있다. 
+
+@Repository
+다 알고 있듯이 data repository를 나타내는 어노테이션이다. @Repository는 플랫폼 특정 exception을 잡아 Spring의 unchecked exception으로 뱉어내준다. ( PersistenceExceptionTranslationPostProcessor )
+
+@Service
+비즈니스 로직이나 respository layer 호출하는 함수에 사용된다. 다른 어노테이션과 다르게 @Component에 추가된 기능은 없다. 하지만 나중에 Spring 측에서 추가적인 exception handling을 해줄 수도 있으니 비즈니스 로직에는 해당 어노테이션을 사용하자.
+
+## Spring MVC 설명
+
+웹 요청이 들어옴 -> Servlet 컨테이너에서 Dispatcher Servlet을 실행 -> 이 서블릿이 HandlerMapping 에서 사상되는 컨트롤러를 찾음 -> 비지니스 로직 수행 -> 뷰 리졸버를 확인 -> 뷰 반환
+
+## ControllerAdvice가 무엇인가요?
+
+컨트롤러에 공통적으로 적용할 수있는 코드 AOP의 일종으로 보임.
+
+## AOP에 대해 설명해주세요
+
+Aspect : 위에서 설명한 흩어진 관심사를 모듈화 한 것. 주로 부가기능을 모듈화함.
+
+Target : Aspect를 적용하는 곳 (클래스, 메서드 .. )
+
+## Unchecked, Checked Exception 차이가 뭔가요?
+
+RuntimeException을 상속하지 않는 클래스는 Checked Exception, 반대로 상속한 클래스는 Unchecked Exception으로 분류할 수 있다.
+
+Checked Exception : 컴파일 시점에 확인되는 Exception
+
+Unchecked Exception : 실행 중 확인이 되는 Exception 그렇기 때문에 RuntimeException 이라고 부름
+
+## 프로세스와 쓰레드의 차이점
+
+프로세스는 커널에 의해 직접 관리되는데 커널 메모리 안에는 각 프로세스마다 관리하고 있는 프로세스에 대한 데이터들이 있다. 이 정보는 Process Control Block(이하 “PCB”)이라고 하는 자료구조 안에 있는데 커널 스케쥴러가 프로세스를 제어하는 데 필요한 정보들이 담겨 있다
+
+프로세스에는 코드, 데이터, 힙, 스택 메모리 영역 존재.
+
+먼저 프로세스는 보다 독립적이다. 서로 구분되는 자원을 할당 받아 정말 필요한 경우가 아니면 다른 프로세스에 영향을 미치지 않고 실행된다. 반면 스레드는 프로세스의 하위 집합으로 여러 스레드가 같은 프로세스 자원을 공유하기 때문에 독립적이지 않다. 같은 의미로 프로세스는 보유한 자원에 대한 별개의 주소 공간을 갖지만 스레드는 이 주소 공간을 공유한다.
+
+## PCB에 들어가는 정보
+
+PID : 프로세스의 고유 번호
+상태 : 준비, 대기, 실행
+포인터 : 다음에 실행될 프로세스의 포인터
+메모리 : 코드, 데이터, 힙, 스택
+
+## IO/NIO 개념
