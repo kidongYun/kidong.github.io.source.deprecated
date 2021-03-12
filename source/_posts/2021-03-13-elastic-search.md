@@ -64,3 +64,9 @@ curl -XPOST http://localhost:9200/classes/class/1/ -d '
 ```
 curl -XPOST http://localhost:9200/classes/class/1/ -d @oneclass.json
 ```
+
+기존에 존재하는 document에 필드 추가하기.
+```
+curl -XPOST http://localhost:9200/classes/class/1/ update -d '
+{"doc" : {"unit" : 1}} '
+```
