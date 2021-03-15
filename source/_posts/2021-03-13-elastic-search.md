@@ -105,6 +105,31 @@ curl -XPOST http://localhost:9200/_bulk?pretty —data-binary @classes.json
 엘라스틱서치 만으로 그러면 서비스를 할수 있지 않나.
 단점이 있다 단점이 뭐냐면. 
 
+엘라스틱 서치의 search을 알아보자.
+
+```
+curl -XGET localhost:9200/basketball/record/_search?pretty
+```
+
+URI의 q 파라미터 값을 활용하여 쿼리를 작성할 수 있다.
+```
+curl -XGET 'localhost:9200/basketball/record/_search?q=points:30&pretty'
+```
+
+REQUEST BODY 를 활용해서도 쿼리를 날릴 수 있다.
+```
+curl -XGET 'localhost:9200/basketball/record/_search -d `{
+
+    "query" : {
+        "term" : { "points" : 30 }
+    }
+}`'
+```
+
+REquest body 옵션은 다양한 질의가 가능하다 나중에 찾아보자.
+
+
+
 ————————————————
 
 오픈소스 검색 및 분석 엔진.
