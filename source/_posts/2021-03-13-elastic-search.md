@@ -128,6 +128,46 @@ curl -XGET 'localhost:9200/basketball/record/_search -d `{
 
 REquest body 옵션은 다양한 질의가 가능하다 나중에 찾아보자.
 
+elastic aggregation.
+
+aggs = aggregations
+
+metry aggs -> 산술 어그리게이션.
+
+BUCKET AGGS -> 그룹 바이로 보면 된다.
+
+뭔가 다큐먼트 통합적으로 연산을 할 떄 사용하는 거 같은데.
+
+디비에서 있는 SUM(), MAX() 이런 연산을 지원하는 거 같다.
+
+
+키바나 설정.
+
+키바나 management 메뉴.
+
+index pattern -> index 설정하는 곳에 엘라스틱서치의 인덱스를 넣는다.
+
+----------------------
+
+엘라스틱 서치 인강.
+
+루씬 기반의 검색 엔진.
+자바 기반으로 만들어짐. (JVM 위에서 돈다. jdk8이상 필요)
+
+Elastic stack -> Elaticsearch + Logstash + Kibana
+
+빅데이터 사업쪽에서 많이 사용하나봄.
+엘라스틱 개발자가 돈을 잘번대.
+
+클라우드, 온오프라믹스?
+
+엘라스틱 설치
+
+데이터베이스가 있고 이걸 로그스태쉬를 활용해서 엘라스틱서치에 연동을 할 수 있다.
+
+postgresql -> logstash -> elasticsearch -> kibana
+이거 구축을 해보자.
+
 
 
 ————————————————
