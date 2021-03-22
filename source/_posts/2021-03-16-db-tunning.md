@@ -532,7 +532,15 @@ IX_ORDERS_N2 의 조건이 범위 연산이 후위에 있기 때문에 INDEX_ACC
 
 ### 4.9 INDEX SKIP SCAN
 
-실장님의 가르침
+INDEX SKIP SCAN은 조회 조건이 INDEX의 ACCESS 조건이 아니라 FILTERING 조건으로 들어오는 경우 ACCESS 범위에 해당하는 모든 INDEX BLOCK을 순차적으로 SCAN하는 것이 아니라 (이 방법이 기존의 INDEX 방법) 불필요한 LEAF BLOCK들은 SKIP 해서 인덱스 범위를 줄여주는 동작이다.
+
+이건 좋지는 않다고 했음. 왜냐하면 결국 선두 인덱스가 생략된 상태로 조회되었을때가 가정인데. 이 가정 자체가 사실 좋지 않은 가정임.
+
+### 4.10 INDEX FULL SCAN
+
+INDEX FULL SCAN은 INDEX LEAF BLOCK 전체를 순차적으로 ACCESS 하는 동작을 말한다. 모든 LEAF BLOCK을 탐색하기 때문에 성능은 당연히 떨어지고, INDEX 건수가 많을 수록 더 느리다.
+
+### 실장님의 가르침
 
 인덱스 스킵스캔을 타는 것은 결국 인덱스 설정이 적절하지 않는다는 의미이기 때문에 다시한번 재고 해봐야 한다.
 
