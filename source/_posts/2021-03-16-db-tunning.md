@@ -540,6 +540,303 @@ INDEX SKIP SCAN은 조회 조건이 INDEX의 ACCESS 조건이 아니라 FILTERIN
 
 INDEX FULL SCAN은 INDEX LEAF BLOCK 전체를 순차적으로 ACCESS 하는 동작을 말한다. 모든 LEAF BLOCK을 탐색하기 때문에 성능은 당연히 떨어지고, INDEX 건수가 많을 수록 더 느리다.
 
+```SQL
+IX_ORDERS_N3 : ORDER_STATUS, ORDER_MODE, EMPLOYEE_ID, ORDER_DATE
+
+SELECT /*+ INDEX(A IX_ORDERS_N3) */
+       TO_CHAR(ORDER_DATE, 'YYYYMM') ORDER_MM,
+       COUNT(*) ORDER_CNT,
+       SUM(ORDER_TOTAL) ORDER_AMT
+  FROM ORDERS A
+ WHERE ORDER_DATE BETWEEN TO_DATE('20120101', 'YYYYMMDD')
+                      AND TO_DATE('20120301', 'YYYYMMDD')
+ GROUP BY TO_CHAR(ORDER_DATE, 'YYYYMM');
+
+
+-- 실행 계획
+SELECT STATEMENT
+  HASH GROUP BY
+    TABLE ACCESS BY INDEX ROWID
+      INDEX FULL SCAN
+```
+
+위와 같이 쿼리를 작성하면 원래는 TABLE FULL SCAN 이 발생할 것 같은데.. 힌트문을 줘서 INDEX FULL SCAN이 발생. INDEX 는 순차적 탐색이기 떄문에 상대적으로 더 느리다.
+
+위와같은 INDEX FULL SCAN 방법이 유용한 케이스를 생각해보자.
+
+```SQL
+SELECT ORDER_DATE, EMPLOYEE_ID, ORDER_MODE, ORDER_STATUS, ORDER_TOTAL
+  FROM (
+    SELECT ORDER_DATE, EMPLOYEE_ID, ORDER_MODE, ORDER_STATUS, ORDER_TOTAL
+      FROM ORDERS A
+     ORDER BY ORDER_STATUS, ORDER_MODE, EMPLOYEE_ID, ORDER_DATE )
+ WHERE ROWNUM <= 1000;
+
+
+-- 실행 계획
+SELECT STATEMENT
+  COUNT STOPKEY
+    VIEW
+      SORT ORDER BY STOPKEY
+        TABLE ACCESS FULL
+```
+
+위 쿼리에서 서브쿼리 내용이 TABLE ACCESS FULL을 하고 조건에 따라 정렬을 하게된다. 그러나 ORDER_DATE 기준으로 이미 인덱스가 있는 것을 알기 때문에 굳이 쿼리 수행시에 정렬을 하는 것 보다는. ORDER_DATE 조건을 주게되면 인덱스를 사용하게 되기때문에 이미 정렬된 상태로 데이터를 가져올 수 있다.
+
+```SQL
+SELECT ORDER_DATE, EMPLOYEE_ID, ORDER_MODE, ORDER_STATUS, ORDER_TOTAL
+  FROM (
+    SELECT ORDER_DATE, EMPLOYEE_ID, ORDER_MODE, ORDER_STATUS, ORDER_TOTAL
+      FROM ORDERS A
+     WHERE ORDER_DATE > TO_DATE('1999', 'YYYY') 
+     ORDER BY ORDER_STATUS, ORDER_MODE, EMPLOYEE_ID, ORDER_DATE )
+ WHERE ROWNUM <= 1000;
+
+
+ -- 실행 계획
+ SELECT STATEMENT
+  COUNT STOPKEY
+    VIEW
+      TABLE ACCESS BY INDEX ROWID
+        INDEX FULL SCAN
+```
+
+즉 요약하면. 재정렬이 필요할 때 정렬해야하는 컬럼 기준으로 인덱스가 있다면. 인덱스에 이미 정렬되어 있기 때문에 그 인덱스를 활용하는 것이 보다 성능적으로 좋다.
+
+### 4.11 INDEX FULL SCAN(MIN/MAX)
+
+조건절(WHERE)  부분에 인덱스 컬럼이 존재하지 않고 MIN(), MAX() 함수로 데이터를 뽑을 때에는 INDEX FULL SCAN 이 일어난다.
+
+```SQL
+IX_ORDERS_N1 : ORDER_DATE
+
+SELECT MAX(ORDER_DATE)
+  FROM ORDERS;
+
+-- 실행 계획
+SELECT STATEMENT
+  SORT AGGREGATE
+    INDEX FULL SCAN (MIN/MAX)
+```
+
+WHERE 절이 없기 때문에 INDEX FULL SCAN이 발생. 근데 buffers 수가 root block -> branch block -> leaf block 이렇게 3번 접근하는데 이게 INDEX RANGE SCAN 이랑 효율은 똑같은 거 같은데...
+
+INDEX FULL SCAN 일때 아래와 같이 MIN, MAX 를 모두 가져오려고 한다면 FULL TABLE SCAN 이 발생.
+
+```SQL
+SELECT MIN(ORDER_DATE), MAX(ORDER_DATE)
+  FROM ORDERS
+
+-- 실행 계획
+SELECT STATEMENT
+  SORT AGGREGATE
+    TABLE ACCESS FULL
+```
+
+MIN, MAX를 하나씩 조회할 때 처럼 따로따로 가져오기 위해서는 아래처럼 쿼리를 작성해야 함.
+
+```SQL
+SELECT MIN(ORDER_DATE), MAX(ORDER_DATE)
+  FROM (
+        SELECT MAX(ORDER_DATE) ORDER_DATE
+          FROM ORDERS
+         UNION ALL
+        SELECT MIN(ORDER_DATE)
+          FROM ORDERS);
+
+
+-- 실행 계획
+SELECT STATEMENT
+  SORT AGGREGATE
+    VIEW
+      UNION-ALL
+        SORT AGGREGATE
+          INDEX FULL SCAN (MIN/MAX)
+        SORT AGGREGATE
+          INDEX FULL SCAN (MIN/MAX)
+
+```
+
+### 4.12 INDEX FAST FULL SCAN
+
+인덱스 테이블의 모든 스캔방법이 순차적이지는 않은데. 바로 INDEX FAST FULL SCAN 방법이 FULL TABLE SCAN 과 동일하게 MULTI BLOCK I/O를 지원한다.
+다만 이 방식이 동작하기 위해서는 INDEX 컬럼 외에 테이블 컬럼이 SQL에 포함되어 있으면 안된다.
+
+내 생각에는 조건만 성립한다면 가장 빠른 조회 방법이지 않을까 싶다.
+
+```SQL
+IX_ORDERS_N3 : ORDER_STATUS, ORDER_MODE, EMPLOYEE_ID, ORDER_DATE
+
+SELECT TO_CHAR(ORDER_DATE, 'YYYYMM') YYYYMM,
+       COUNT(*) CNT
+  FROM ORDERS
+ WHERE ORDER_MODE = 'online'
+ GROUP BY TO_CHAR(ORDER_DATE, 'YYYYMM');
+
+
+-- 실행 계획
+SELECT STATEMENT
+  HASH GROUP BY
+    INDEX FAST FULL SCAN   
+```
+
+테이블 사이즈 보다 인덱스 사이즈가 일반적으로 작으니까 FULL TABLE SCAN 보다 INDEX FAST FULL SCAN 방법이 더 빠를거다.
+
+```SQL
+SELECT COUNT(*)
+  FROM ORDERS A
+
+
+-- 실행 계획
+SELECT STATEMENT
+  SORT AGGREGATE
+    TABLE ACCESS FULL
+```
+
+위 쿼리의 경우 단순 COUNT 하는 것이기 때문에 컬럼 중에 인덱스가 걸린 컬럼만 조회해서 INDEX FAST FULL SCAN을 하면 보다 더 빠를 것 같은데.
+실제로 동작한 OPERATION을 보면 TABLE ACCESS FULL이 동작되었다. 이는 NULL 값과 관련이 있다.
+
+인덱스를 추가하거나 변경하는 것은 그 테이블을 참조하는 다른 SQL들의 실행 계획이 변경되어 성능에 영향이 갈 수 있기 때문에 쉬운 것은 아님을 알아야 한다.
+
+### 4.13 INDEX COMBINATION
+
+한 테이블에 여러 인덱스가 있을 때 인덱스를 조합해서 사용할 수 있는 형태를 말한다.
+
+```SQL
+IX_SALES_N1 : CUSTOMER_ID, ORDER_DATE
+IX_SALES_N2 : EMPLOYEE_ID, ORDER_DATE
+IX_SALES_N3 : PRODUCT_ID, ORDER_DATE
+
+SELECT /*+ INDEX_COMBILE(A IX_SALES_N3 IX_SALES_N2) */
+       ORDER_DATE, CUSTOMER_ID, ORDER_QTY, ORDER_AMT
+  FROM SALES A
+ WHERE (PRODUCT_ID = 'P246' AND EMPLOYEE_ID = 'E412')
+   AND ORDER_DATE >= '20210101'
+   AND ORDER_DATE < '20120601';
+
+
+-- 실행 계획
+SELECT STATEMENT
+  TABLE ACCESS BY INDEX ROWID
+    BITMAP CONVERSION TO ROWIDS
+      BITMAP AND
+        BITMAP CONVERSION FROM ROWIDS
+          SORT ORDER BY
+            INDEX RANGE SCAN
+        BITMAP CONVERSION FROM ROWIDS
+          SORT ORDER BY
+            INDX RANGE SCAN
+
+
+```
+
+### 4.14 INDEX JOIN
+
+INDEX JOIN은 INDEX 끼리 JOIN 되는 형태이며 HASH JOIN 형태로 동작한다. 동작하기 위해서는 SELECT 절에 있는 모든 컬럼과 WHERE 절에 있는 모든 컬럼들이 
+INDEX 컬럼이여야 한다.
+
+```SQL
+IX_SALES_N1 : CUSTOMER_ID, ORDER_DATE
+IX_SALES_N2 : EMPLOYEE_ID, ORDER_DATE
+
+SELECT /*+ INDEX_JOIN(A) */
+       ORDER_DATE, EMPLOYEE_ID, CUSTOMER_ID
+  FROM SALES A
+ WHERE (EMPLOYEE_ID = 'E412' AND CUSTOMER_ID = 'C03107')
+   AND ORDER_DATE >= '20120101'
+   AND ORDER_DATE < '20120601';
+
+
+-- 실행 계획
+SELECT STATEMENT
+  VIEW
+    HASH JOIN
+      INDEX RANGE SCAN    |   IX_SALES_N1
+      INDEX RANGE SCAN    |   IX_SALES_N2
+```
+
+### 5.1 NESTED LOOP JOIN
+
+```SQL
+SELECT TAB1.COL2, TAB2.COL3, TAB3.COL4
+  FROM TAB1, TAB2, TAB3
+ WHERE TAB1.COL1 = TAB2.COL1
+   AND TAB2.COL2 = TAB3.COL3
+   AND TAB1.COL1 BETWEEN VALUES1 AND VALUES2 
+```
+
+NL 방식의 특징은 아래와 같다.
+
+먼저 수행되는 선행 테이블의 처리 결과 만큼 후행 테이블 작업이 반복되기 때문에 선행 테이블의 작업량이 전체 작업량을 좌우 한다.
+
+선행 테이블의 결과 만들어진 셋이 후행 테이블에 상수 값으로 제공된다.
+
+후행 테이블은 동일한 테이블을 선행 테이블의 결과 만큼 지속 반복함으로 인덱스가 존재해야 한다. 그렇지 않다면 그 반복 수 만큼 FULL TABLE SCAN을 하게 됨으로
+성능에 매우 좋지 않다.
+
+주로 처리해야하는 데이터가 적은 OLTP 서비스에서 주로 이용된다.
+
+* INDEX SCAN 에서 가장 큰 부하 부분이 RANDOM SINGLE BLOCK I/O 부분이다. 따라서 대량 데이터 SCAN 시에는 INDEX SCAN이 불리하다고 언급함.
+
+NESTED LOOP JOIN 은 OLTP에서 부분적인 데이터를 보여줄 때 유용하다. 대용량 BATCH 프로그램에서 사용시에는 성능이 많이 저하된다.
+
+```SQL
+SELECT /*+ LEADING(B A) USE_NL(A) */
+       A.EMPLOYEE_ID, A.LAST_NAME, B.DEPARTMENT_NAME
+  FROM EMPLOYEES A, DEPARTMENTS B
+ WHERE A.DEPARTMENT_ID = B.DEPARTMENT_ID; 
+```
+
+위 SQL은 LEADING(B A) 로 명시되어 있으믕로 DEPARTMENTS 테이블이 선행테이블로, 그리고 EMPLOYEES 테이블이 후행테이블로 조인된다.
+
+DEPARTMENT 테이블에서 먼저 SCAN 작업이 이루어지고, " WHERE A.DEPARTMENT_ID = 'D001' " 의 형태로 상수값으로 바뀌어서 후행 테이블의 SCAN 이 동작된다.
+여기서 EMPLOYEES 테이블에 DEPARTMENT_ID 에 대한 인덱스가 안걸려있다면 매번 FULL TABLE SCAN을 해야함으로 성능에 좋지 않다.
+
+NL의 3가지 방식. - 기본 방식, PREFETCH 방식, BATCHING 방식 
+
+### 5.2 HASH JOIN
+
+```SQL
+SELECT /*+ USE_HASH(A B)*/
+       A.ORDER_DATE A.EMPLOYEE_ID, A.CUSTOMER_ID,
+       B.UNIT_PRICE * B.QUANTITY SALES_AMT
+  FROM ORDERS A, ORDER_ITEMS B
+ WHERE A.ORDER_ID = B.ORDER_ID
+   AND A.ORDER_DATE >= TO_DATE('20120701', 'YYYYMMDD')
+   AND A.ORDER_DATE < TO_DATE('20120702', 'YYYYMMDD')
+   AND B.ORDER_DATE >= TO_DATE('20120701', 'YYYYMMDD')
+   AND B.ORDER_DATE , TO_DATE('20120702', 'YYYYMMDD');
+
+
+-- 실행 계획
+SELECT STATEMENT
+  HASH JOIN
+    TABLE ACCESS BY INDEX ROWID
+      INDEX RANGE SCAN
+    TABLE ACCESS BY INDEX ROWID
+      INDEX RANGE SCAN   
+```
+
+선행 테이블인 ORDERS를 PGA 메모리에 HASH TABLE로 생성 후에 후행 테이블 ORDER_ITEMS를 SCAN하면서 PGA에서 컬럼 매핑하는 방식으로 수행.
+
+조인조건이 equal인 경우에만 가능.
+
+선행 테이블의 데이터가 소량일 때 성능이 극대화된다. 적은 SIZE의 테이블이 HASH TABLE로 생성되어야 한다.
+
+메모리 내에서 수행될 때 빠른 속도를 보장하지만 이 메모리 사이즈를 초과하게 되면 디스크와 계속 SWAPPING을 해야하기 때문에 성능이 저하된다.
+
+NL에 비해 상대적으로 CPU 사용량과 메모리 사용량이 높다.
+
+배치처리, 테이블 FULL SCAN 시 유리하다.
+
+OLTP 처리시 CPU 자원을 많이 사용할수 잇으니 주의해야 한다.
+
+JOIN KEY의 중복이 많을수록 HASH KEY 충돌로 성능이 저한된다. 해시 충돌을 줄여야 한다.
+
+HASH TABLE의 목적으로 생성되는 테이블을 BUILD INPUT 이라고 한다
+
+
+
 ### 실장님의 가르침
 
 인덱스 스킵스캔을 타는 것은 결국 인덱스 설정이 적절하지 않는다는 의미이기 때문에 다시한번 재고 해봐야 한다.
@@ -574,5 +871,3 @@ CASE 키워드 보다는 DECODE 키워드가 좀더 빠르다. 구문을 파싱�
 80% 이상을 가져온다고 하면 인덱스 조회보다 FULL 조회가 더 빠르다.
 
 캐싱된다고 하지만 결국 이거는 메모리에 올라가는 거기 때문에 TTL이 존재하지는 않는다 다만. 다른 쿼리에 의해 올라간 데이터에 의해 밀린다.
-
-hello
