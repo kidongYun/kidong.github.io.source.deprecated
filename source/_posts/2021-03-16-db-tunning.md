@@ -792,7 +792,38 @@ SELECT /*+ LEADING(B A) USE_NL(A) */
 DEPARTMENT 테이블에서 먼저 SCAN 작업이 이루어지고, " WHERE A.DEPARTMENT_ID = 'D001' " 의 형태로 상수값으로 바뀌어서 후행 테이블의 SCAN 이 동작된다.
 여기서 EMPLOYEES 테이블에 DEPARTMENT_ID 에 대한 인덱스가 안걸려있다면 매번 FULL TABLE SCAN을 해야함으로 성능에 좋지 않다.
 
-NL의 3가지 방식. - 기본 방식, PREFETCH 방식, BATCHING 방식 
+NL의 3가지 방식. - 기본 방식, PREFETCH 방식, BATCHING 방식 이건 좀 어렵다 ㅠㅠ.
+
+
+```SQL
+SELECT A.ORDER_ID, A.ORDER_STATUS, A.EMPLOYEE_ID, 
+       B.PRODUCT_ID, B.QUANTITY
+  FROM ORDERS A,
+       ORDER_ITEMS B
+ WHERE A.ORDER_ID = B.ORDER_ID
+   AND A.ORDER_DATE >= TO_DATE('2012010100', 'YYYYMMDDHH24')
+   AND A.ORDER_DATE < TO_DATE('2012010101', 'YYYYMMDDHH24');
+
+
+-- 실행 계획 (기본 방식)
+SELECT STATEMENT
+  NESTED LOOPS
+    TABLE ACCESS BY INDEX ROWID     |   ORDERS
+      INDEX RANGE SCAN              |   IX_ORDES_N1
+    TABLE ACCESS BY INDEX ROWID     |   ORDER_ITEMS
+      INDEX RANGE SCAN              |   IX_ORDER_ITEMS_PK
+
+
+-- 실행 계획 (PREFETCH 방식)
+SELECT STATEMENT
+  TABLE ACCESS BY INDEX ROWID
+    NESTED LOOPS
+      TABLE ACCESS BY INDEX ROWID
+        INDEX RANGE SCAN
+      INDEX RANGE SCAN      
+```
+
+IX_ORDER_ITEMS_PK 보면 후행테이블이 기본적으로 PK 인덱스를 사용함을 알 수 있다. FULL TABLE SCAN 이 정말 성능에 안좋다는 것을 암시하는 부분.
 
 ### 5.2 HASH JOIN
 
@@ -833,8 +864,111 @@ OLTP 처리시 CPU 자원을 많이 사용할수 잇으니 주의해야 한다.
 
 JOIN KEY의 중복이 많을수록 HASH KEY 충돌로 성능이 저한된다. 해시 충돌을 줄여야 한다.
 
+```SQL
+SELECT /*+ LEADING(A B C) USE_HASH(A B C) 
+           NO_SWAP_JOIN_INPUTS(C) */
+       B.JOB_ID, C.GENDER,
+       COUNT(*) ORDER_CNT,
+       SUM(ORDER_TOTAL) ORDER_AMT
+  FROM ORDERS A, EMPLOYEES B, CUSTOMERS C
+ WHERE A.EMPLOYEE_ID = B.EMPLOYEE_ID
+   AND A.CUSTOMER_ID = C.CUSTOMER_ID
+   AND A.ORDER_DATE >= TO_DATE('20120101', 'YYYYMMDD')
+   AND A.ORDER_DATE < TO_DATE('20121101', 'YYYYMMDD')
+ GROUP BY B.JOB_ID, C.GENDER;
+
+
+-- 실행 계획
+SELECT STATEMENT
+  HASH GROUP BY
+    HASH JOIN
+      HASH JOIN
+        TABLE ACCESS FULL      |   ORDERS
+        TABLE ACCESS FULL      |   EMPLOYEES
+      TABLE ACCESS FULL        |   CUSTOMERS
+```
+
+
 HASH TABLE의 목적으로 생성되는 테이블을 BUILD INPUT 이라고 한다
 
+위 테이블은 A -> B -> C 순서로 조인을 하고 있는데. 만약 A의 테이블 결과가 상대적으로 많다면. 이 A 테이블을 PGA 메모리에 올려두고 해쉬 테이블을 만들기 때문에.
+메모리 사용량이 많을 수 밖에 없다. 그래서 이럴때에는 상대적으로 더 적은 결과가 도출되는 테이블을 먼저 선행 테이블 처리하는 것이 좋다.
+
+```SQL
+SELECT /*+ LEADING(B A C) USE_HASH(A B C) 
+           SWAP_JOIN_INPUTS(C)  */
+       B.JOB_ID, C.GENDER, COUNT(*) ORDER_CNT, SUM(ORDER_TOTAL) ORDER_AMT
+  FROM ORDERS A, EMPLOYEES B, CUSTOMERS C
+ WHERE A.EMPLOYEE_ID = B.EMPLOYEE_ID
+   AND A.CUSTOMER_ID = C.CUSTOMER_ID
+   AND A.ORDER_DATE >= TO_DATE('20120101', 'YYYYMMDD')
+   AND A.ORDER_DATE < TO_DATE('20121101', 'YYYYMMDD')
+ GROUP BY B.JOB_ID, C.GENDER;
+
+
+-- 실행 계획.
+SELECT STATEMENT
+  HASH GROUP BY
+    HASH JOIN
+      TABLE ACCESES FULL        | CUSTOMERS
+      HASH JOIN
+        TABLE ACCESS FULL       | EMPLOYEES
+        TABLE ACCESS FULL       | ORDERS
+```
+
+힌트문을 적용하지 않아도 OPTIMIZER가 알아서 더 좋은 성능을 위해 위처럼 테이블 SWAP을 했을 것이다.
+
+보면 B -> A -> C 순서로 선행 테이블이 보다 작은 테이블이 되도록 하여 PGA 메모리 사용률을 줄였다.
+
+SWAP_JOIN_INPUTS(C) 힌트문으로 인해서 C에 해당하는 CUSTOMER 테이블이 BUILD INPUT(해시 테이블) 로 생성이 되었다.
+
+동작 과정을 서술하면 아래와 같다.
+
+1. CUSTOMERS를 HASH TABLE로 생성 (SWAP_JOIN_INPUTS(C))
+2. EMPLOYEES를 HASH TABLE로 생성 (LEADING(B))
+3. ORDERS를 SCAN하면서 2번에 생성한 HASH TABLE SCAN
+4. 3번 결과가 SCAN되면서 1번에서 생성한 HASH TABLE SCAN.
+
+XPLAN에서 Used-Mem 부분 중 괄호 안에 숫자가 (1) 로 전시된다면 그것은 PGA 메모리가 모자라서 DISK SWAPPING이 발생했다는 의미이다.
+(0) - Optimal
+(1) - One Pass
+(2) - Multi Pass
+
+```
+SWAP_JOIN_INPUTS(D) -> D 에 해당하는 테이블을 해시 테이블로 먼저 넣겠다는 의미. 선행테이블로 쓰이게 된다.
+LEADING(C A B D E) -> C -> A -> B -> D -> E 순서로 해시 조인하게 된다.
+```
+
+### 5.3 SORT MERGE JOIN
+
+JOIN 하고자 하는 두 테이블의 JOIN COLUMN 값으로 각각 SORT를 한 후에 정렬된 컬럼값을 비교하면서 조인하는 방식.
+
+```SQL
+SELECT /*+ USE_MERGE(A B) */
+       A.ORDER_DATE, A.EMPLOYEE_ID, A.CUSTOMER_ID, B.PRODUCT_ID
+       B.UNIT_PRICE * B.QUANTITY SALES_AMT
+  FROM ORDERS A,
+       ORDER_ITEMS B
+ WHERE A.ORDER_ID = B.ORDER_ID
+   AND A.ORDER_DATE >= TO_DATE('20120701', 'YYYYMMDD')
+   AND A.ORDER_DATE < TO_DATE('20120702', 'YYYYMMDD')
+   AND B.ORDER_DATE >= TO_DATE('20120701', 'YYYYMMDD')
+   AND B.ORDER_DATE < TO_DATE('20120702', 'YYYYMMDD');
+
+
+--- 실행 계획
+SELECT STATEMENT
+  MERGE JOIN
+    SORT JOIN
+      TABLE ACCESS BY INDEX ROWID       |   ORDERS
+        INDEX RANGE SCAN                |   IX_ORDERS_N1
+    SORT JOIN
+      TABLE ACCESS BY INDEX ROWID       |   ORDER_ITEMS
+        INDEX RANGE SCAN                |   IX_ORDER_ITEMS_N1
+
+```   
+
+SORT가 발생하기 때문에 PGA 메모리를 사용. SORT 시 PGA 메모리 사용량이 사이즈를 초과하게 되면 DISK SWAPPING이 발생.
 
 
 ### 실장님의 가르침
@@ -871,3 +1005,7 @@ CASE 키워드 보다는 DECODE 키워드가 좀더 빠르다. 구문을 파싱�
 80% 이상을 가져온다고 하면 인덱스 조회보다 FULL 조회가 더 빠르다.
 
 캐싱된다고 하지만 결국 이거는 메모리에 올라가는 거기 때문에 TTL이 존재하지는 않는다 다만. 다른 쿼리에 의해 올라간 데이터에 의해 밀린다.
+
+HAVING 절은 SORT GROUP BY 동작이 처리되고 난 다음에 수행되기 때문에 WHERE 절 처럼 성능을 향상시키지는 않는다.
+
+
