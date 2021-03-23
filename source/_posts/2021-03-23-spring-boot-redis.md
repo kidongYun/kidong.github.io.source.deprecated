@@ -127,7 +127,10 @@ public class RedisRunner implements ApplicationRunner {
         System.out.println(byId.get().getEmail());
     }
 }
+
 ```
+
+### 레디스 명령어
 
 hget : hash 타입의 데이터에서 특정 필드를 가져옴.
 
@@ -195,4 +198,23 @@ sismember gdhong:task writing - 0
 
 // 두 집합의 합집합을 구함 (중복은 제거된다는 의미)
 sunion gdhong:task gdhong:task2
+
+// 두 집합의 차집합을 구함
+sdiff gdhong:task gdhong:task2
+
+// 두 집합의 교집합을 구함
+sinter gdhong:task gdhong:task2
 ```
+
+```
+// ordered set 집합이지만 오름차순으로 정렬되어 있음
+
+// ordered set 컬렉션에 데이터를 넣음. 가중치 값이 추가로 들어간다.
+zadd users:point 1 gdhong
+
+// 조회.
+zrange 
+```
+
+
+### SpringTemplate 을 활용한 레디스 명령어 처리
