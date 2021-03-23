@@ -154,3 +154,45 @@ mset a 1 b 2
 // 한번에 여러 개의 key 데이터를 조회한다. 여기서 c는 없기 때문에 nil 값이 나온당.
 mget a b c
 ```
+
+```
+//레디스에서 hash 구조는 key-subkey-value 구조를 가진다. 
+hset key1 subkey1 "hello"
+hset key1 subkey2 "world"
+
+hget key1 subkey1
+hkeys key1 -> 이 명령어는 레디스에 락이 걸리기 때문에 주의해야 한다.
+```
+
+```
+// list 구조
+// 리스트의 왼쪽에 a 값을 삽입
+lpush gdhong:test "a"
+// 리스트의 오른쪽에 b 값을 삽입.
+rpush gdhong:test "b"
+// 리스트의 왼쪽 부터 숫자 만큼 추출
+lpop gdhong:test 2
+// 리스트의 오른쪽 부터 숫자 만큼 추출
+rpop gdhong:test 2
+// 리스트를 주어진 숫자 범위만큼 검색.
+lrange gdhong:test 0 4
+```
+
+```
+// set 구조
+// set 구조이고 gdhong:task 키에 "programming" value 삽입
+sadd gdhong:task "programming"
+// set 구조이고 gdhong:task 키에 "reading" value 삽입
+sadd gdhong:task "reading"
+// 위 명령어를 한번더 수행해도 삽입이 안됨. set이 중복이 안되는 구조이기 때문.
+
+// set 구조의 키를 넣으면 해당 value 값들을 조회할 수 있다
+smembers gdhong:task
+
+// 만약 존재하는 value면 1을 반환, 아니면 0을 반환.
+sismember gdhong:task reading - 1
+sismember gdhong:task writing - 0
+
+// 두 집합의 합집합을 구함 (중복은 제거된다는 의미)
+sunion gdhong:task gdhong:task2
+```
