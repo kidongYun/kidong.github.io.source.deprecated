@@ -121,5 +121,5 @@ replica shard 들이 모두 UNASSIGNED 상태에 있는데. 그 이유는 primar
 ### 문자열을 직접 넣어 DOCUMENT 생성하기.
 
 ```
-
+hello it's me
 ```
