@@ -102,6 +102,7 @@ public interface AccountRepository extends CrudRepository<Account, String> {}
 
 ```java
 @Component
+
 public class RedisRunner implements ApplicationRunner {
     @Autowired
     StringRedisTemplate redisTemplate;
