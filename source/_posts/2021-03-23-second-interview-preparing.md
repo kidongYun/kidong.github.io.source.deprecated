@@ -299,3 +299,16 @@ D : 지속성 - 해다 트랜잭션의 결과가 일시적이지 않고 영구�
 1. upstream 설정
     분배규칙
     weight
+
+
+
+### 39. Hash
+
+hashAlgorithm을 설계 -> hashAlgorithm은 HashCode를 반환 -> hashCode를 hashtable 크기에 맞게 모듈러 연산 -> 이 결과 값이 배열의 키가 되며 해당 인덱스에 value 값을 저장
+
+value 가 여러개일 경우 충돌이 발생했다 하며 해결 방법은 연결리스트를 두는 Chanining 방법, Open Addressing 방법이 있음.
+여기서는 Chaining 방법을 고려
+
+값이 여러개가 되면 연결리스트를 두고 차곡차곡 쌓음.
+충돌이 많이 나는 경우에는 이 부분을 트리구조로 변경하여 검색의 속도를 높일 수 있음.
+
