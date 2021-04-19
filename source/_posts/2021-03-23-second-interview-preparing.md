@@ -58,7 +58,7 @@ categories: java
 
 ### 4. 웹서버와 WAS를 구분시켜서 두는 이유.
 
-1. 로드밸런싱 (modjk)
+1. 로드밸런싱 (modjk) - nginx의 경우 upstream 설정.
 2. 보안 (WAS는 데이터베이스 등을 접근하기 때문에 외부로부터 노출 X)
 3. 캐시 적중률 향상, 페이지 부재 감소
 
@@ -119,6 +119,8 @@ MODEL-VIEW-CONTROLLER
 1. Stop the worlld
 2. eden, survivor1, survivor2, old, minorGC, fullGC
 3. Parallel GC, CMS GC, G1GC
+
+Mark-Sweep-Compaction
 
 
 ### 13. JVM
