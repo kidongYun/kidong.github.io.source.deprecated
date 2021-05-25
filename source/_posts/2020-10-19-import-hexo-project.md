@@ -28,6 +28,13 @@ You should install the packages for using hexo. I think the two commands would o
     > yarn
 ```
 
+### Install Hexo module from npm.
+
+```
+    > npm install hexo-cli -g
+```
+
+
 ### Downloading your own hexo theme
 
 If you use the hexo theme, then download it from somewhere and copy and paste to 'directory/themes/' and You should check the 'config.yml' file name whether it is needed transition or not.
