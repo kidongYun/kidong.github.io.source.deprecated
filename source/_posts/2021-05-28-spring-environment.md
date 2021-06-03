@@ -26,3 +26,8 @@ VM-option 이나 다양한 방법으로 어떤 properties 파일을 접근할지
 
 @UtilityClass
 유틸리티 클래스에 적용하면 되는 어노테이션이다. 만약 이 어노테이션을 작성하면 기본생성자가 private 생성되며 만약 리플렉션 혹은 내부에서 생성자를 호출할 경우에는 UnsupportedOperationException이 발생한다.
+
+## acceptsProfiles(String... profiles)
+
+실행되는 프로파일이 profiles 파라미터에 있는 프로파일이라면 true 를 반환하고 그렇지 않으면 false 를 반환한다.
+
