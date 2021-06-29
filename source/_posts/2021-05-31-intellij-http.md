@@ -52,6 +52,8 @@ Content-Type: application/x-www-form-urlencoded
 
 grant_type=client_credentials&scope=read_profile
 
+git
+
 > {% //response handler
 client.global.set("access_token", response.body.access_token);
 client.log(client.global.get("access_token"));
